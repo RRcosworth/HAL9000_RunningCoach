@@ -1,0 +1,28 @@
+.DS_Store
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+*.moved-aside
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+
+# CocoaPods / Carthage, if added later
+Pods/
+Carthage/Build/
+
+# Secrets and local config
+.env
+.env.*
+*.mobileprovision
+*.p12
+*.cer
+
+# Logs
+*.log

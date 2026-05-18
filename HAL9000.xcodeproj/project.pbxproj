@@ -1,0 +1,497 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000000000000000000001 /* NativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* NativeApp.swift */; };
+		B10000000000000000000002 /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* AppTab.swift */; };
+		B10000000000000000000003 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* RootView.swift */; };
+		B10000000000000000000004 /* AppColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000004 /* AppColor.swift */; };
+		B10000000000000000000005 /* AppTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000005 /* AppTypography.swift */; };
+		B10000000000000000000006 /* FloatingTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006 /* FloatingTabBar.swift */; };
+		B10000000000000000000007 /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007 /* PrimaryButton.swift */; };
+		B10000000000000000000008 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008 /* EmptyStateView.swift */; };
+		B10000000000000000000009 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009 /* TodayView.swift */; };
+		B10000000000000000000010 /* TodayViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000010 /* TodayViewModel.swift */; };
+		B10000000000000000000011 /* TrainingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000011 /* TrainingView.swift */; };
+		B10000000000000000000012 /* TrainingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000012 /* TrainingViewModel.swift */; };
+		B10000000000000000000013 /* TrainingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000013 /* TrainingModels.swift */; };
+		B10000000000000000000014 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000014 /* AnalysisView.swift */; };
+		B10000000000000000000015 /* RaceLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000015 /* RaceLogView.swift */; };
+		B10000000000000000000016 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000016 /* ProfileView.swift */; };
+		B10000000000000000000017 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000017 /* APIClient.swift */; };
+		B10000000000000000000018 /* Endpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000018 /* Endpoint.swift */; };
+		B10000000000000000000019 /* UserSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000019 /* UserSessionStore.swift */; };
+		B10000000000000000000020 /* CacheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000020 /* CacheStore.swift */; };
+		B10000000000000000000021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000021 /* Assets.xcassets */; };
+		B10000000000000000000022 /* training-mascot.png in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000022 /* training-mascot.png */; };
+		B10000000000000000000023 /* HealthAuthorizationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000025 /* HealthAuthorizationState.swift */; };
+		B10000000000000000000024 /* HealthMetricModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000026 /* HealthMetricModels.swift */; };
+		B10000000000000000000025 /* TrainingLoadCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000027 /* TrainingLoadCalculator.swift */; };
+		B10000000000000000000026 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000028 /* HealthKitService.swift */; };
+		B10000000000000000000027 /* TrainingExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000029 /* TrainingExportService.swift */; };
+		B10000000000000000000028 /* AppBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000030 /* AppBackground.swift */; };
+		B10000000000000000000029 /* SwipeBackSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000031 /* SwipeBackSupport.swift */; };
+		B10000000000000000000030 /* TSBCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000032 /* TSBCalculator.swift */; };
+		B10000000000000000000031 /* HeartRateZoneCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000033 /* HeartRateZoneCalculator.swift */; };
+		B10000000000000000000032 /* TSBDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000034 /* TSBDetailView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F20000000000000000000001 /* NativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeApp.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
+		F20000000000000000000003 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		F20000000000000000000004 /* AppColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppColor.swift; sourceTree = "<group>"; };
+		F20000000000000000000005 /* AppTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTypography.swift; sourceTree = "<group>"; };
+		F20000000000000000000006 /* FloatingTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTabBar.swift; sourceTree = "<group>"; };
+		F20000000000000000000007 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
+		F20000000000000000000008 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		F20000000000000000000009 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		F20000000000000000000010 /* TodayViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayViewModel.swift; sourceTree = "<group>"; };
+		F20000000000000000000011 /* TrainingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingView.swift; sourceTree = "<group>"; };
+		F20000000000000000000012 /* TrainingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingViewModel.swift; sourceTree = "<group>"; };
+		F20000000000000000000013 /* TrainingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingModels.swift; sourceTree = "<group>"; };
+		F20000000000000000000014 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		F20000000000000000000015 /* RaceLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceLogView.swift; sourceTree = "<group>"; };
+		F20000000000000000000016 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		F20000000000000000000017 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		F20000000000000000000018 /* Endpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoint.swift; sourceTree = "<group>"; };
+		F20000000000000000000019 /* UserSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSessionStore.swift; sourceTree = "<group>"; };
+		F20000000000000000000020 /* CacheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStore.swift; sourceTree = "<group>"; };
+		F20000000000000000000021 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F20000000000000000000022 /* training-mascot.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "training-mascot.png"; sourceTree = "<group>"; };
+		F20000000000000000000023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F20000000000000000000024 /* HAL9000.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HAL9000.entitlements; sourceTree = "<group>"; };
+		F20000000000000000000025 /* HealthAuthorizationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthAuthorizationState.swift; sourceTree = "<group>"; };
+		F20000000000000000000026 /* HealthMetricModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMetricModels.swift; sourceTree = "<group>"; };
+		F20000000000000000000027 /* TrainingLoadCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingLoadCalculator.swift; sourceTree = "<group>"; };
+		F20000000000000000000028 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
+		F20000000000000000000029 /* TrainingExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingExportService.swift; sourceTree = "<group>"; };
+		F20000000000000000000030 /* AppBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackground.swift; sourceTree = "<group>"; };
+		F20000000000000000000031 /* SwipeBackSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeBackSupport.swift; sourceTree = "<group>"; };
+		F20000000000000000000032 /* TSBCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBCalculator.swift; sourceTree = "<group>"; };
+		F20000000000000000000033 /* HeartRateZoneCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneCalculator.swift; sourceTree = "<group>"; };
+		F20000000000000000000034 /* TSBDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBDetailView.swift; sourceTree = "<group>"; };
+		F20000000000000000000100 /* HAL9000.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HAL9000.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		P30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		G40000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				G40000000000000000000002 /* HAL9000 */,
+				G40000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		G40000000000000000000002 /* HAL9000 */ = {
+			isa = PBXGroup;
+			children = (
+				G40000000000000000000010 /* App */,
+				G40000000000000000000020 /* DesignSystem */,
+				G40000000000000000000030 /* Features */,
+				G40000000000000000000070 /* Health */,
+				G40000000000000000000040 /* Networking */,
+				G40000000000000000000050 /* Persistence */,
+				G40000000000000000000060 /* Resources */,
+				F20000000000000000000023 /* Info.plist */,
+				F20000000000000000000024 /* HAL9000.entitlements */,
+			);
+			path = HAL9000;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000100 /* HAL9000.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000010 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000001 /* NativeApp.swift */,
+				F20000000000000000000002 /* AppTab.swift */,
+				F20000000000000000000003 /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000020 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000004 /* AppColor.swift */,
+				F20000000000000000000005 /* AppTypography.swift */,
+				F20000000000000000000006 /* FloatingTabBar.swift */,
+				F20000000000000000000007 /* PrimaryButton.swift */,
+				F20000000000000000000008 /* EmptyStateView.swift */,
+				F20000000000000000000030 /* AppBackground.swift */,
+				F20000000000000000000031 /* SwipeBackSupport.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000030 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				G40000000000000000000031 /* Today */,
+				G40000000000000000000032 /* Training */,
+				G40000000000000000000033 /* Analysis */,
+				G40000000000000000000034 /* RaceLog */,
+				G40000000000000000000035 /* Profile */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000031 /* Today */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000009 /* TodayView.swift */,
+				F20000000000000000000010 /* TodayViewModel.swift */,
+				F20000000000000000000034 /* TSBDetailView.swift */,
+			);
+			path = Today;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000032 /* Training */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000011 /* TrainingView.swift */,
+				F20000000000000000000012 /* TrainingViewModel.swift */,
+				F20000000000000000000013 /* TrainingModels.swift */,
+				F20000000000000000000029 /* TrainingExportService.swift */,
+			);
+			path = Training;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000033 /* Analysis */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000014 /* AnalysisView.swift */,
+			);
+			path = Analysis;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000034 /* RaceLog */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000015 /* RaceLogView.swift */,
+			);
+			path = RaceLog;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000035 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000016 /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000040 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000017 /* APIClient.swift */,
+				F20000000000000000000018 /* Endpoint.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000050 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000019 /* UserSessionStore.swift */,
+				F20000000000000000000020 /* CacheStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000060 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000021 /* Assets.xcassets */,
+				F20000000000000000000022 /* training-mascot.png */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000070 /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000025 /* HealthAuthorizationState.swift */,
+				F20000000000000000000026 /* HealthMetricModels.swift */,
+				F20000000000000000000027 /* TrainingLoadCalculator.swift */,
+				F20000000000000000000032 /* TSBCalculator.swift */,
+				F20000000000000000000033 /* HeartRateZoneCalculator.swift */,
+				F20000000000000000000028 /* HealthKitService.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		T50000000000000000000001 /* HAL9000 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C70000000000000000000002 /* Build configuration list for PBXNativeTarget "HAL9000" */;
+			buildPhases = (
+				P30000000000000000000002 /* Sources */,
+				P30000000000000000000001 /* Frameworks */,
+				P30000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HAL9000;
+			productName = HAL9000;
+			productReference = F20000000000000000000100 /* HAL9000.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		R60000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					T50000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+						SystemCapabilities = {
+							com.apple.HealthKit = {
+								enabled = 1;
+							};
+						};
+					};
+				};
+			};
+			buildConfigurationList = C70000000000000000000001 /* Build configuration list for PBXProject "HAL9000" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				"zh-Hans",
+			);
+			mainGroup = G40000000000000000000001;
+			productRefGroup = G40000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				T50000000000000000000001 /* HAL9000 */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		P30000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000021 /* Assets.xcassets in Resources */,
+				B10000000000000000000022 /* training-mascot.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		P30000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000001 /* NativeApp.swift in Sources */,
+				B10000000000000000000002 /* AppTab.swift in Sources */,
+				B10000000000000000000003 /* RootView.swift in Sources */,
+				B10000000000000000000004 /* AppColor.swift in Sources */,
+				B10000000000000000000005 /* AppTypography.swift in Sources */,
+				B10000000000000000000006 /* FloatingTabBar.swift in Sources */,
+				B10000000000000000000007 /* PrimaryButton.swift in Sources */,
+				B10000000000000000000008 /* EmptyStateView.swift in Sources */,
+				B10000000000000000000009 /* TodayView.swift in Sources */,
+				B10000000000000000000010 /* TodayViewModel.swift in Sources */,
+				B10000000000000000000011 /* TrainingView.swift in Sources */,
+				B10000000000000000000012 /* TrainingViewModel.swift in Sources */,
+				B10000000000000000000013 /* TrainingModels.swift in Sources */,
+				B10000000000000000000014 /* AnalysisView.swift in Sources */,
+				B10000000000000000000015 /* RaceLogView.swift in Sources */,
+				B10000000000000000000016 /* ProfileView.swift in Sources */,
+				B10000000000000000000017 /* APIClient.swift in Sources */,
+				B10000000000000000000018 /* Endpoint.swift in Sources */,
+				B10000000000000000000019 /* UserSessionStore.swift in Sources */,
+				B10000000000000000000020 /* CacheStore.swift in Sources */,
+				B10000000000000000000023 /* HealthAuthorizationState.swift in Sources */,
+				B10000000000000000000024 /* HealthMetricModels.swift in Sources */,
+				B10000000000000000000025 /* TrainingLoadCalculator.swift in Sources */,
+				B10000000000000000000030 /* TSBCalculator.swift in Sources */,
+				B10000000000000000000031 /* HeartRateZoneCalculator.swift in Sources */,
+				B10000000000000000000026 /* HealthKitService.swift in Sources */,
+				B10000000000000000000027 /* TrainingExportService.swift in Sources */,
+				B10000000000000000000028 /* AppBackground.swift in Sources */,
+				B10000000000000000000029 /* SwipeBackSupport.swift in Sources */,
+				B10000000000000000000032 /* TSBDetailView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B80000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B80000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B80000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HAL9000/HAL9000.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HAL9000/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hal9000.runnercoach;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B80000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HAL9000/HAL9000.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HAL9000/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hal9000.runnercoach;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C70000000000000000000001 /* Build configuration list for PBXProject "HAL9000" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B80000000000000000000001 /* Debug */,
+				B80000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C70000000000000000000002 /* Build configuration list for PBXNativeTarget "HAL9000" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B80000000000000000000003 /* Debug */,
+				B80000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = R60000000000000000000001 /* Project object */;
+}
