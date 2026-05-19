@@ -13,6 +13,7 @@ final class TrainingViewModel: ObservableObject {
     private let api = APIClient.shared
     private let cache = CacheStore.shared
     private let exportService = TrainingExportService()
+    private let healthService: HealthKitServing = HealthKitService.shared
 
     // MARK: - Load
 
@@ -25,6 +26,7 @@ final class TrainingViewModel: ObservableObject {
                 sessions = cached.sessions
                 summary = cached.summary
                 progress = cached.progress
+                await mergeCurrentWeekHealthData()
                 if state == .loading { state = .loaded }
             }
 
@@ -45,6 +47,7 @@ final class TrainingViewModel: ObservableObject {
             sessions = parsed.sessions
             summary = parsed.summary
             progress = parsed.progress
+            await mergeCurrentWeekHealthData()
 
             // Cache
             let cacheData = WeeklyData(sessions: sessions, summary: summary, progress: progress)
@@ -55,7 +58,8 @@ final class TrainingViewModel: ObservableObject {
         } catch {
             // If we have cached data, keep showing it
             if sessions.isEmpty {
-                state = .failed(error.localizedDescription)
+                await mergeCurrentWeekHealthData()
+                state = sessions.isEmpty ? .failed(error.localizedDescription) : .loaded
             }
         }
     }
@@ -116,7 +120,8 @@ final class TrainingViewModel: ObservableObject {
                 plannedDuration: plannedDuration > 0 ? plannedDuration : nil,
                 actualDistance: actualDistance,
                 actualDuration: actualDuration,
-                zone: item.zone
+                zone: item.zone,
+                startedAt: nil
             )
         }
 
@@ -227,6 +232,118 @@ final class TrainingViewModel: ObservableObject {
         }
 
         return "\(phaseText)进度偏慢，先安排低强度有氧，质量课等身体状态稳定后再做。"
+    }
+
+    private func mergeCurrentWeekHealthData() async {
+        let interval = currentWeekInterval()
+        guard let healthWorkouts = try? await healthService.fetchRunningWorkoutSummaries(from: interval.start, to: interval.end),
+              !healthWorkouts.isEmpty
+        else { return }
+
+        let existingIDs = Set(sessions.map(\.id))
+        let healthSessions = healthWorkouts
+            .filter { !existingIDs.contains($0.id) }
+            .map(trainingSession)
+
+        if !healthSessions.isEmpty {
+            sessions = (sessions + healthSessions).sorted { lhs, rhs in
+                let leftDate = lhs.startedAt ?? date(from: lhs.date) ?? .distantPast
+                let rightDate = rhs.startedAt ?? date(from: rhs.date) ?? .distantPast
+                return leftDate > rightDate
+            }
+        }
+
+        let healthDistanceMeters = healthWorkouts.reduce(0) { total, workout in
+            total + ((workout.distanceKm ?? 0) * 1000)
+        }
+        let healthDurationSeconds = Int(healthWorkouts.reduce(0) { total, workout in
+            total + workout.durationMinutes * 60
+        })
+        let currentCompleted = progress?.completedDistance ?? summary?.totalDistance ?? 0
+        let completedDistance = max(currentCompleted, healthDistanceMeters)
+        let targetDistance = progress?.targetDistance ?? plannedDistanceKm(from: sessions) * 1000
+        let remainingDistance = max(targetDistance - completedDistance, 0)
+        let completedCount = max(
+            sessions.filter(\.isCompleted).count,
+            healthWorkouts.count
+        )
+
+        progress = TrainingProgress(
+            targetDistance: targetDistance,
+            completedDistance: completedDistance,
+            remainingDistance: remainingDistance,
+            completedSessions: completedCount,
+            plannedSessions: sessions.count,
+            guidance: trainingGuidance(
+                completedDistance: completedDistance,
+                targetDistance: targetDistance,
+                remainingDistance: remainingDistance,
+                phase: summary?.phase
+            )
+        )
+
+        if let summary {
+            self.summary = WeeklySummary(
+                weekStart: summary.weekStart,
+                totalDistance: completedDistance,
+                totalDuration: max(summary.totalDuration, healthDurationSeconds),
+                totalActivities: max(summary.totalActivities, completedCount),
+                phase: summary.phase,
+                phaseDescription: summary.phaseDescription
+            )
+        } else {
+            self.summary = WeeklySummary(
+                weekStart: dateString(from: interval.start),
+                totalDistance: completedDistance,
+                totalDuration: healthDurationSeconds,
+                totalActivities: healthWorkouts.count,
+                phase: nil,
+                phaseDescription: nil
+            )
+        }
+    }
+
+    private func trainingSession(from workout: TodayWorkoutSummary) -> TrainingSession {
+        TrainingSession(
+            id: workout.id,
+            name: workout.title,
+            type: "Run",
+            date: dateString(from: workout.startedAt),
+            distance: (workout.distanceKm ?? 0) * 1000,
+            duration: Int(workout.durationMinutes * 60),
+            averageHeartrate: nil,
+            averagePace: nil,
+            description: "Apple 健康记录",
+            status: "completed",
+            plannedDistance: nil,
+            plannedDuration: nil,
+            actualDistance: workout.distanceKm.map { $0 * 1000 },
+            actualDuration: Int(workout.durationMinutes * 60),
+            zone: nil,
+            startedAt: workout.startedAt
+        )
+    }
+
+    private func currentWeekInterval() -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let now = Date()
+        let dayStart = calendar.startOfDay(for: now)
+        let weekday = calendar.component(.weekday, from: dayStart)
+        let daysFromMonday = (weekday + 5) % 7
+        let start = calendar.date(byAdding: .day, value: -daysFromMonday, to: dayStart) ?? dayStart
+        return (start, now)
+    }
+
+    private func date(from value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: value)
+    }
+
+    private func dateString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }
 

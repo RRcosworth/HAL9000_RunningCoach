@@ -18,7 +18,8 @@ struct CoachPlanSyncService {
                 plannedDuration: nil,
                 actualDistance: nil,
                 actualDuration: nil,
-                zone: session.zone
+                zone: session.zone,
+                startedAt: nil
             )
         }
     }

@@ -18,6 +18,7 @@ protocol HealthKitServing {
     func fetchMonthlyRunningHistory(months: Int) async throws -> [HealthValuePoint]
     func fetchHeartRateSamples(days: Int) async throws -> [HeartRateSample]
     func fetchMaxHeartRate() async throws -> Double
+    func fetchRunningWorkoutSummaries(from start: Date, to end: Date) async throws -> [TodayWorkoutSummary]
     func fetchWorkoutDetail(id: String) async throws -> WorkoutDetail
 }
 
@@ -322,6 +323,19 @@ actor HealthKitService: HealthKitServing {
         let samples = try await quantitySamples(.heartRate, unit: .count().unitDivided(by: .minute()), from: start, to: now)
         let observedMax = samples.map(\.value).max()
         return min(max(observedMax ?? 190, 160), 210)
+    }
+
+    func fetchRunningWorkoutSummaries(from start: Date, to end: Date) async throws -> [TodayWorkoutSummary] {
+        let workouts = try await runningWorkouts(from: start, to: end)
+        return workouts.map { workout in
+            TodayWorkoutSummary(
+                id: workout.uuid.uuidString,
+                title: workout.workoutActivityType == .running ? "跑步" : "运动",
+                startedAt: workout.startDate,
+                durationMinutes: workout.duration / 60,
+                distanceKm: workoutDistanceKm(workout)
+            )
+        }
     }
 
     func fetchWorkoutDetail(id: String) async throws -> WorkoutDetail {

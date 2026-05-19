@@ -18,6 +18,7 @@ struct TrainingSession: Identifiable, Codable {
     let actualDistance: Double?
     let actualDuration: Int?
     let zone: String?
+    let startedAt: Date?
 
     // Computed display values
     var distanceKm: String {
@@ -68,6 +69,24 @@ struct TrainingSession: Identifiable, Codable {
         default: return "figure.run"
         }
     }
+
+    var workoutSummary: TodayWorkoutSummary? {
+        guard UUID(uuidString: id) != nil else { return nil }
+
+        return TodayWorkoutSummary(
+            id: id,
+            title: name,
+            startedAt: startedAt ?? Self.dateFormatter.date(from: date) ?? Date(),
+            durationMinutes: Double(actualDuration ?? duration) / 60,
+            distanceKm: (actualDistance ?? distance) / 1000
+        )
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 // MARK: - Training Progress

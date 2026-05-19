@@ -5,36 +5,40 @@ struct TrainingView: View {
     @StateObject private var viewModel = TrainingViewModel()
 
     var body: some View {
-        ZStack {
-            AppBackground()
+        NavigationStack {
+            ZStack {
+                AppBackground()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    header
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        header
 
-                    switch viewModel.state {
-                    case .idle, .loading:
-                        skeletonContent
-                    case .loaded:
-                        loadedContent
-                    case .empty:
-                        emptyContent
-                    case .failed(let message):
-                        errorContent(message)
+                        switch viewModel.state {
+                        case .idle, .loading:
+                            skeletonContent
+                        case .loaded:
+                            loadedContent
+                        case .empty:
+                            emptyContent
+                        case .failed(let message):
+                            errorContent(message)
+                        }
+
+                        Color.clear.frame(height: 126)
                     }
-
-                    Color.clear.frame(height: 126)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .refreshable {
+                    await viewModel.refresh()
+                }
             }
-            .refreshable {
-                await viewModel.refresh()
+            .toolbar(.hidden, for: .navigationBar)
+            .task {
+                await viewModel.load()
             }
         }
-        .task {
-            await viewModel.load()
-        }
+        .supportsSwipeBack()
     }
 
     private var header: some View {
@@ -164,7 +168,16 @@ struct TrainingView: View {
                 }
             } else {
                 ForEach(completedSessions) { session in
-                    historyCard(session)
+                    if let workout = session.workoutSummary {
+                        NavigationLink {
+                            TodayWorkoutDetailView(workout: workout)
+                        } label: {
+                            historyCard(session, showsChevron: true)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        historyCard(session, showsChevron: false)
+                    }
                 }
             }
         }
@@ -248,7 +261,7 @@ struct TrainingView: View {
         }
     }
 
-    private func historyCard(_ session: TrainingSession) -> some View {
+    private func historyCard(_ session: TrainingSession, showsChevron: Bool) -> some View {
         trainingCard {
             HStack(spacing: 12) {
                 statusIcon(session, tint: AppColor.success)
@@ -274,6 +287,12 @@ struct TrainingView: View {
                     }
                     .font(AppTypography.footnote)
                     .foregroundStyle(AppColor.textSecondary)
+                }
+
+                if showsChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppColor.textTertiary)
                 }
             }
         }
