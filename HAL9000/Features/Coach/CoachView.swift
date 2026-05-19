@@ -5,69 +5,55 @@ struct CoachView: View {
     @FocusState private var inputFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            if let context = viewModel.context {
-                                CoachContextStrip(context: context)
-                            }
-
-                            ForEach(viewModel.messages) { message in
-                                CoachMessageBubble(message: message)
-                                    .id(message.id)
-                            }
-
-                            if viewModel.state == .loading {
-                                CoachTypingBubble()
-                                    .id("typing")
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 18)
-                        .padding(.bottom, 110)
-                    }
-                    .onChange(of: viewModel.messages.count) { _, _ in
-                        scrollToBottom(proxy)
-                    }
-                    .onChange(of: viewModel.state) { _, _ in
-                        scrollToBottom(proxy)
-                    }
+        VStack(spacing: 0) {
+            CoachHeader(
+                onRefresh: {
+                    Task { await viewModel.refreshContext() }
+                },
+                onClear: {
+                    viewModel.clearHistory()
                 }
+            )
 
-                CoachInputBar(
-                    text: $viewModel.draft,
-                    isSending: viewModel.state == .loading,
-                    onSend: {
-                        Task { await viewModel.send() }
-                    }
-                )
-                .focused($inputFocused)
-            }
-            .background(AppBackground())
-            .navigationTitle("Coach")
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        Task { await viewModel.refreshContext() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .accessibilityLabel("刷新上下文")
-
-                    Menu {
-                        Button(role: .destructive) {
-                            viewModel.clearHistory()
-                        } label: {
-                            Label("清空对话", systemImage: "trash")
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if let context = viewModel.context {
+                            CoachContextStrip(context: context)
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+
+                        ForEach(viewModel.messages) { message in
+                            CoachMessageBubble(message: message)
+                                .id(message.id)
+                        }
+
+                        if viewModel.state == .loading {
+                            CoachTypingBubble()
+                                .id("typing")
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 14)
+                    .padding(.bottom, 188)
+                }
+                .onChange(of: viewModel.messages.count) { _, _ in
+                    scrollToBottom(proxy)
+                }
+                .onChange(of: viewModel.state) { _, _ in
+                    scrollToBottom(proxy)
                 }
             }
+
+            CoachInputBar(
+                text: $viewModel.draft,
+                isSending: viewModel.state == .loading,
+                onSend: {
+                    Task { await viewModel.send() }
+                }
+            )
+            .focused($inputFocused)
         }
+        .background(AppBackground())
         .task {
             await viewModel.load()
         }
@@ -85,6 +71,47 @@ struct CoachView: View {
                 }
             }
         }
+    }
+}
+
+private struct CoachHeader: View {
+    let onRefresh: () -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        HStack(alignment: .bottom) {
+            Text("Coach")
+                .font(.system(size: 42, weight: .bold, design: .rounded))
+                .foregroundStyle(AppColor.pageTitle)
+                .lineLimit(1)
+
+            Spacer()
+
+            HStack(spacing: 10) {
+                Button(action: onRefresh) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 22, weight: .semibold))
+                        .frame(width: 48, height: 48)
+                }
+                .accessibilityLabel("刷新上下文")
+
+                Menu {
+                    Button(role: .destructive, action: onClear) {
+                        Label("清空对话", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 22, weight: .semibold))
+                        .frame(width: 48, height: 48)
+                }
+                .accessibilityLabel("更多")
+            }
+            .foregroundStyle(AppColor.textPrimary)
+            .background(.ultraThinMaterial, in: Capsule())
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .padding(.bottom, 12)
     }
 }
 
@@ -216,7 +243,7 @@ private struct CoachInputBar: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
-        .padding(.bottom, 26)
+        .padding(.bottom, 118)
         .background(.ultraThinMaterial)
     }
 
