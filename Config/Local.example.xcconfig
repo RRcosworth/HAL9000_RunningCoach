@@ -1,0 +1,16 @@
+// Copy this file to Config/Local.xcconfig and fill in your private values.
+// Config/Local.xcconfig is ignored by Git.
+
+// Apple Developer Team ID, used for installing on your iPhone.
+HAL9000_DEVELOPMENT_TEAM =
+
+// Keep this stable once the app is installed, otherwise iOS treats it as a different app.
+HAL9000_BUNDLE_IDENTIFIER = com.hal9000.runnercoach
+
+// Remote backend URL, if you use one. Do not include a trailing slash.
+HAL9000_BACKEND_BASE_URL =
+
+// Local backend option. Set to YES to use http://HOST:PORT instead of HAL9000_BACKEND_BASE_URL.
+HAL9000_USE_LOCAL_SERVER = NO
+HAL9000_LOCAL_SERVER_HOST = 127.0.0.1
+HAL9000_LOCAL_SERVER_PORT = 5051

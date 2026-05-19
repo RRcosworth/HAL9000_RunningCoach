@@ -29,6 +29,8 @@ final class TrainingViewModel: ObservableObject {
             }
 
             // Fetch fresh data
+            await api.updateBaseURL(UserSessionStore.shared.resolvedBaseURL)
+
             let dateStr = ISO8601DateFormatter().string(from: Date())
             let queryDate = String(dateStr.prefix(10))
 

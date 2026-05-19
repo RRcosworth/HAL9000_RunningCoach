@@ -39,6 +39,7 @@
 		B10000000000000000000030 /* TSBCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000032 /* TSBCalculator.swift */; };
 		B10000000000000000000031 /* HeartRateZoneCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000033 /* HeartRateZoneCalculator.swift */; };
 		B10000000000000000000032 /* TSBDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000034 /* TSBDetailView.swift */; };
+		B10000000000000000000033 /* LocalConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000035 /* LocalConfiguration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -76,6 +77,9 @@
 		F20000000000000000000032 /* TSBCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBCalculator.swift; sourceTree = "<group>"; };
 		F20000000000000000000033 /* HeartRateZoneCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneCalculator.swift; sourceTree = "<group>"; };
 		F20000000000000000000034 /* TSBDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBDetailView.swift; sourceTree = "<group>"; };
+		F20000000000000000000035 /* LocalConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalConfiguration.swift; sourceTree = "<group>"; };
+		F20000000000000000000036 /* HAL9000.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = HAL9000.xcconfig; sourceTree = "<group>"; };
+		F20000000000000000000037 /* Local.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.example.xcconfig; sourceTree = "<group>"; };
 		F20000000000000000000100 /* HAL9000.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HAL9000.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -94,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				G40000000000000000000002 /* HAL9000 */,
+				G40000000000000000000080 /* Config */,
 				G40000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -216,6 +221,7 @@
 			isa = PBXGroup;
 			children = (
 				F20000000000000000000019 /* UserSessionStore.swift */,
+				F20000000000000000000035 /* LocalConfiguration.swift */,
 				F20000000000000000000020 /* CacheStore.swift */,
 			);
 			path = Persistence;
@@ -241,6 +247,15 @@
 				F20000000000000000000028 /* HealthKitService.swift */,
 			);
 			path = Health;
+			sourceTree = "<group>";
+		};
+		G40000000000000000000080 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000036 /* HAL9000.xcconfig */,
+				F20000000000000000000037 /* Local.example.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -338,6 +353,7 @@
 				B10000000000000000000018 /* Endpoint.swift in Sources */,
 				B10000000000000000000019 /* UserSessionStore.swift in Sources */,
 				B10000000000000000000020 /* CacheStore.swift in Sources */,
+				B10000000000000000000033 /* LocalConfiguration.swift in Sources */,
 				B10000000000000000000023 /* HealthAuthorizationState.swift in Sources */,
 				B10000000000000000000024 /* HealthMetricModels.swift in Sources */,
 				B10000000000000000000025 /* TrainingLoadCalculator.swift in Sources */,
@@ -410,12 +426,13 @@
 		};
 		B80000000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F20000000000000000000036 /* HAL9000.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = HAL9000/HAL9000.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = "$(HAL9000_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HAL9000/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -428,7 +445,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.hal9000.runnercoach;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(HAL9000_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -441,12 +458,13 @@
 		};
 		B80000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F20000000000000000000036 /* HAL9000.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = HAL9000/HAL9000.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = "$(HAL9000_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HAL9000/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -459,7 +477,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.hal9000.runnercoach;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(HAL9000_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

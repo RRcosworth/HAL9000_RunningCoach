@@ -31,10 +31,15 @@ final class UserSessionStore: ObservableObject {
     }
 
     private init() {
-        self.useLocalServer = UserDefaults.standard.bool(forKey: "useLocalServer")
-        self.localIP = UserDefaults.standard.string(forKey: "localIP") ?? "127.0.0.1"
-        self.localPort = UserDefaults.standard.string(forKey: "localPort") ?? "5051"
+        let defaults = UserDefaults.standard
+
+        self.useLocalServer = defaults.object(forKey: "useLocalServer") as? Bool
+            ?? LocalConfiguration.useLocalServer
+        self.localIP = defaults.string(forKey: "localIP")
+            ?? LocalConfiguration.localServerHost
+        self.localPort = defaults.string(forKey: "localPort")
+            ?? LocalConfiguration.localServerPort
         self.serverURL = UserDefaults.standard.string(forKey: "serverURL")
-            ?? ""
+            ?? LocalConfiguration.backendBaseURL
     }
 }

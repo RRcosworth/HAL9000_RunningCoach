@@ -20,6 +20,14 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>HAL9000BackendBaseURL</key>
+	<string>$(HAL9000_BACKEND_BASE_URL)</string>
+	<key>HAL9000UseLocalServer</key>
+	<string>$(HAL9000_USE_LOCAL_SERVER)</string>
+	<key>HAL9000LocalServerHost</key>
+	<string>$(HAL9000_LOCAL_SERVER_HOST)</string>
+	<key>HAL9000LocalServerPort</key>
+	<string>$(HAL9000_LOCAL_SERVER_PORT)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
