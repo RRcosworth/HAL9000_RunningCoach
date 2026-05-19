@@ -24,6 +24,7 @@ enum KeychainStore {
         let query = baseQuery(for: key)
 
         if value.isEmpty {
+            // An empty value means the user cleared the credential in settings.
             SecItemDelete(query as CFDictionary)
             return
         }

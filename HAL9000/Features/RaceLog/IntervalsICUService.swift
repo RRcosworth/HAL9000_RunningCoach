@@ -2,7 +2,13 @@ import CoreLocation
 import Foundation
 
 actor IntervalsICUService {
-    private let baseURL = URL(string: "https://intervals.icu")!
+    private var baseURL: URL {
+        guard let url = URL(string: "https://intervals.icu") else {
+            fatalError("Intervals.icu base URL is invalid")
+        }
+        return url
+    }
+
     private let session = URLSession.shared
 
     func fetchAthleteId(apiKey: String) async throws -> String {
@@ -52,18 +58,7 @@ actor IntervalsICUService {
         let (data, response) = try await session.data(for: request)
         try validate(response)
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let value = try container.decode(String.self)
-            if let date = ISO8601DateFormatter.intervalsWithFractionalSeconds.date(from: value)
-                ?? ISO8601DateFormatter.intervals.date(from: value) {
-                return date
-            }
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(value)")
-        }
-
-        return try decoder.decode([IntervalsActivity].self, from: data)
+        return try JSONDecoder().decode([IntervalsActivity].self, from: data)
     }
 
     func fetchStartCoordinate(apiKey: String, activityId: String) async throws -> CLLocationCoordinate2D? {

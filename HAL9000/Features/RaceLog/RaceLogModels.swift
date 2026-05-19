@@ -223,8 +223,7 @@ struct IntervalsActivity: Decodable {
             "全马",
             "马拉松",
             "越野赛",
-            "竞赛",
-            "race"
+            "竞赛"
         ]
 
         return keywords.contains { haystack.contains($0) }
@@ -267,15 +266,26 @@ struct IntervalsStream: Decodable {
     let data: [Double]
 
     var startCoordinate: CLLocationCoordinate2D? {
-        guard data.count >= 4 else { return nil }
+        guard data.count >= 4, data.count.isMultiple(of: 2) else { return nil }
         let longitudeStartIndex = data.count / 2
-        guard longitudeStartIndex < data.count else { return nil }
 
         let latitude = data[0]
         let longitude = data[longitudeStartIndex]
         guard (-90...90).contains(latitude), (-180...180).contains(longitude) else { return nil }
-        guard abs(longitude) > 90 else { return nil }
+        guard !isLikelyLatitudeOnlyStream else { return nil }
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    private var isLikelyLatitudeOnlyStream: Bool {
+        let midpoint = data.count / 2
+        let latitudes = data.prefix(midpoint)
+        let longitudes = data.suffix(midpoint)
+        guard longitudes.allSatisfy({ (-90...90).contains($0) }) else { return false }
+
+        let averageLatitudeLongitudeGap = zip(latitudes, longitudes)
+            .map { abs($0 - $1) }
+            .reduce(0, +) / Double(midpoint)
+        return averageLatitudeLongitudeGap < 1.0
     }
 }
 

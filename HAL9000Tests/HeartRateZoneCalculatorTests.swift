@@ -28,4 +28,56 @@ final class HeartRateZoneCalculatorTests: XCTestCase {
         XCTAssertEqual(calculator.zoneRange(zone: 3, maxHR: 200), "140-160 bpm")
         XCTAssertEqual(calculator.zoneRange(zone: 9, maxHR: 200), "--")
     }
+
+    func testZeroMaxHeartRateFallsBackSafely() {
+        let calculator = HeartRateZoneCalculator()
+
+        XCTAssertEqual(calculator.classify(heartRate: 150, maxHR: 0), 1)
+        XCTAssertEqual(calculator.loadType(heartRate: 150, maxHR: 0), .lowAerobic)
+        XCTAssertEqual(calculator.zoneRange(zone: 3, maxHR: 0), "0-0 bpm")
+    }
+
+    func testIntervalsStreamAcceptsWesternHemisphereAndPrimeMeridianCoordinates() throws {
+        let newYork = IntervalsStream(type: "latlng", data: [40.7128, 40.7130, -74.0060, -74.0050])
+        let london = IntervalsStream(type: "latlng", data: [51.5074, 51.5076, -0.1278, -0.1275])
+
+        let newYorkCoordinate = try XCTUnwrap(newYork.startCoordinate)
+        let londonCoordinate = try XCTUnwrap(london.startCoordinate)
+
+        XCTAssertEqual(newYorkCoordinate.latitude, 40.7128, accuracy: 0.0001)
+        XCTAssertEqual(newYorkCoordinate.longitude, -74.0060, accuracy: 0.0001)
+        XCTAssertEqual(londonCoordinate.latitude, 51.5074, accuracy: 0.0001)
+        XCTAssertEqual(londonCoordinate.longitude, -0.1278, accuracy: 0.0001)
+    }
+
+    func testIntervalsStreamRejectsLatitudeOnlySequence() {
+        let latitudeOnly = IntervalsStream(type: "latlng", data: [30.000, 30.010, 30.020, 30.030])
+
+        XCTAssertNil(latitudeOnly.startCoordinate)
+    }
+
+    func testIntervalsActivityDecodesLocalDateWithoutTimeZone() throws {
+        let json = """
+        [
+          {
+            "id": "race-1",
+            "name": "Local Race",
+            "type": "Run",
+            "start_date_local": "2026-05-19T07:30:00",
+            "distance": 10000,
+            "moving_time": 2700
+          }
+        ]
+        """.data(using: .utf8)!
+
+        let activities = try JSONDecoder().decode([IntervalsActivity].self, from: json)
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: activities[0].startDate)
+
+        XCTAssertEqual(activities.count, 1)
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 5)
+        XCTAssertEqual(components.day, 19)
+        XCTAssertEqual(components.hour, 7)
+        XCTAssertEqual(components.minute, 30)
+    }
 }

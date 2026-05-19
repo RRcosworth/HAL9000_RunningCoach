@@ -29,4 +29,19 @@ final class TSBCalculatorTests: XCTestCase {
         XCTAssertEqual(calculator.state(for: -31, hasEnoughData: true), .highRisk)
         XCTAssertEqual(calculator.state(for: 20, hasEnoughData: false), .noData)
     }
+
+    func testHighRecentLoadCreatesNegativeTSBTrend() {
+        let start = Date(timeIntervalSince1970: 0)
+        let days = (0..<10).map { offset in
+            (
+                date: start.addingTimeInterval(Double(offset) * 86_400),
+                tss: offset < 5 ? 40.0 : 140.0
+            )
+        }
+
+        let result = TSBCalculator().calculate(dailyTSS: days)
+
+        XCTAssertLessThan(result.current.tsb, 0)
+        XCTAssertGreaterThan(result.current.atl, result.current.ctl)
+    }
 }

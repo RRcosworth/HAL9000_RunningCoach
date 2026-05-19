@@ -35,6 +35,36 @@ final class TrainingLoadCalculatorTests: XCTestCase {
         XCTAssertNotNil(result.longTerm.value)
     }
 
+    func testCalculateHandlesEmptyInput() {
+        let result = TrainingLoadCalculator().calculate(days: [])
+
+        XCTAssertNil(result.shortTerm.value)
+        XCTAssertNil(result.longTerm.value)
+        XCTAssertEqual(result.balance, .unknown)
+    }
+
+    func testSingleDayDoesNotPretendToHaveTrendWindows() {
+        let result = TrainingLoadCalculator().calculate(days: makeDays(count: 1))
+
+        XCTAssertNil(result.shortTerm.value)
+        XCTAssertNil(result.longTerm.value)
+        XCTAssertEqual(result.shortTerm.trend, .unknown)
+    }
+
+    func testDailyLoadClampsHeartRateFactor() {
+        let day = RunningLoadDay(
+            date: Date(),
+            runningDistanceKm: 10,
+            exerciseMinutes: 60,
+            averageHeartRate: 240,
+            restingHeartRate: 50
+        )
+
+        let load = TrainingLoadCalculator().dailyLoad(day)
+
+        XCTAssertEqual(load, 238.0, accuracy: 0.001)
+    }
+
     private func makeDays(count: Int) -> [RunningLoadDay] {
         let start = Date(timeIntervalSince1970: 0)
         return (0..<count).map { offset in
