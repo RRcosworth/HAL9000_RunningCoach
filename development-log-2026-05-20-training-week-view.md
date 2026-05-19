@@ -34,3 +34,20 @@ Implemented the 3-part Training upgrade requested after the first pass.
 Verification:
 
 - `xcodebuild -project HAL9000.xcodeproj -scheme HAL9000 -destination 'id=D8F5F63F-76BF-5E5F-B6F1-9A35CFEF5EBD' build`
+
+## Follow-up: Today and Training Review Fixes
+
+Fixed the review findings from the Today/Training pass.
+
+- Training week days now support multiple sessions on the same date instead of silently showing only the first workout.
+- Cached Training data is rebuilt after local Apple Health merge, so cold-start week cards reflect the newest local run data.
+- Manual refresh no longer deletes the disk cache before the network request, preserving stale-cache fallback when `/api/weekly` fails.
+- Garmin TCX export state is reset when the export selection changes, preventing an old generated file from being shared after changing checkboxes.
+- Export eligibility now uses the training type string directly, so unknown workout types are not treated as running just because the fallback icon is `figure.run`.
+- Today supplemental HealthKit queries now write back only to the snapshot that started them, preventing slower background metric loads from overwriting newer refreshes.
+
+Verification:
+
+- `xcodebuild -project HAL9000.xcodeproj -scheme HAL9000 -destination 'id=D8F5F63F-76BF-5E5F-B6F1-9A35CFEF5EBD' build`
+- `xcodebuild test -project HAL9000.xcodeproj -scheme HAL9000 -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
+- `xcrun devicectl device install app --device D8F5F63F-76BF-5E5F-B6F1-9A35CFEF5EBD /Users/songh/Library/Developer/Xcode/DerivedData/HAL9000-crdijpbpspuebffhvdefclxbkdjw/Build/Products/Debug-iphoneos/HAL9000.app`

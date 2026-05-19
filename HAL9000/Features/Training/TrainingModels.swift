@@ -84,7 +84,7 @@ struct TrainingSession: Identifiable, Codable {
 
     var isRunningWorkout: Bool {
         let value = type.lowercased()
-        return value.contains("run") || typeIcon == "figure.run"
+        return value.contains("run") || value.contains("跑")
     }
 
     var exportDistanceMeters: Double {
@@ -134,15 +134,66 @@ struct TrainingWeekDay: Identifiable, Codable {
     let date: Date
     let weekday: String
     let title: String
-    let session: TrainingSession?
+    let sessions: [TrainingSession]
     let recoveryAdvice: String
+
+    var primarySession: TrainingSession? {
+        sessions.first
+    }
 
     var isToday: Bool {
         Calendar.current.isDateInToday(date)
     }
 
     var isRestDay: Bool {
-        session == nil
+        sessions.isEmpty
+    }
+
+    init(id: String, date: Date, weekday: String, title: String, sessions: [TrainingSession], recoveryAdvice: String) {
+        self.id = id
+        self.date = date
+        self.weekday = weekday
+        self.title = title
+        self.sessions = sessions
+        self.recoveryAdvice = recoveryAdvice
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case date
+        case weekday
+        case title
+        case sessions
+        case session
+        case recoveryAdvice
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        date = try container.decode(Date.self, forKey: .date)
+        weekday = try container.decode(String.self, forKey: .weekday)
+        title = try container.decode(String.self, forKey: .title)
+
+        if let decodedSessions = try container.decodeIfPresent([TrainingSession].self, forKey: .sessions) {
+            sessions = decodedSessions
+        } else if let legacySession = try container.decodeIfPresent(TrainingSession.self, forKey: .session) {
+            sessions = [legacySession]
+        } else {
+            sessions = []
+        }
+
+        recoveryAdvice = try container.decode(String.self, forKey: .recoveryAdvice)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(date, forKey: .date)
+        try container.encode(weekday, forKey: .weekday)
+        try container.encode(title, forKey: .title)
+        try container.encode(sessions, forKey: .sessions)
+        try container.encode(recoveryAdvice, forKey: .recoveryAdvice)
     }
 }
 

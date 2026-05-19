@@ -257,6 +257,8 @@ struct TrainingView: View {
 
     private func weekDayCard(_ day: TrainingWeekDay) -> some View {
         trainingCard {
+            let primarySession = day.primarySession
+
             HStack(alignment: .top, spacing: 12) {
                 VStack(spacing: 3) {
                     Text(day.weekday)
@@ -270,24 +272,24 @@ struct TrainingView: View {
                 .background(day.isToday ? AppColor.accent.opacity(0.12) : AppColor.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                Image(systemName: day.session?.typeIcon ?? "moon.zzz.fill")
+                Image(systemName: primarySession?.typeIcon ?? "moon.zzz.fill")
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(day.session == nil ? AppColor.textTertiary : AppColor.accent)
+                    .foregroundStyle(day.isRestDay ? AppColor.textTertiary : AppColor.accent)
                     .frame(width: 38, height: 38)
-                    .background((day.session == nil ? AppColor.textTertiary : AppColor.accent).opacity(0.12))
+                    .background((day.isRestDay ? AppColor.textTertiary : AppColor.accent).opacity(0.12))
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(day.session?.name ?? "休息日")
+                        Text(dayTitle(day))
                             .font(AppTypography.headline)
                             .foregroundStyle(AppColor.textPrimary)
                             .lineLimit(1)
                         Spacer()
-                        if let session = day.session {
-                            Text(session.isCompleted ? "已完成" : "计划")
+                        if !day.isRestDay {
+                            Text(day.sessions.allSatisfy(\.isCompleted) ? "已完成" : "计划")
                                 .font(AppTypography.caption)
-                                .foregroundStyle(session.isCompleted ? AppColor.success : AppColor.accent)
+                                .foregroundStyle(day.sessions.allSatisfy(\.isCompleted) ? AppColor.success : AppColor.accent)
                         }
                     }
 
@@ -296,18 +298,56 @@ struct TrainingView: View {
                         .foregroundStyle(AppColor.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    if let session = day.session {
-                        HStack(spacing: 8) {
-                            infoChip(session.planDistanceKm, icon: "ruler")
-                            infoChip(session.durationFormatted, icon: "stopwatch")
-                            if let zone = session.zone, !zone.isEmpty {
-                                infoChip(zone, icon: "waveform.path.ecg")
+                    if !day.sessions.isEmpty {
+                        VStack(spacing: 8) {
+                            ForEach(day.sessions) { session in
+                                weekSessionRow(session)
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private func dayTitle(_ day: TrainingWeekDay) -> String {
+        if day.sessions.isEmpty {
+            return "休息日"
+        }
+
+        if day.sessions.count == 1 {
+            return day.sessions[0].name
+        }
+
+        return "\(day.sessions.count) 项训练"
+    }
+
+    private func weekSessionRow(_ session: TrainingSession) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(session.name)
+                    .font(AppTypography.subheadline)
+                    .foregroundStyle(AppColor.textPrimary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                Text(session.isCompleted ? "已完成" : "计划")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(session.isCompleted ? AppColor.success : AppColor.accent)
+            }
+
+            HStack(spacing: 8) {
+                infoChip(session.planDistanceKm, icon: "ruler")
+                infoChip(session.durationFormatted, icon: "stopwatch")
+                if let zone = session.zone, !zone.isEmpty {
+                    infoChip(zone, icon: "waveform.path.ecg")
+                }
+            }
+        }
+        .padding(10)
+        .background(AppColor.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func historyCard(_ session: TrainingSession, showsChevron: Bool) -> some View {

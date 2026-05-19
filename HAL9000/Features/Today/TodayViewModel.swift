@@ -17,6 +17,7 @@ final class TodayViewModel: ObservableObject {
 
     private let healthService: HealthKitServing
     private let loadCalculator: TrainingLoadCalculator
+    private var supplementalTask: Task<Void, Never>?
 
     init(
         healthService: HealthKitServing = HealthKitService.shared,
@@ -96,8 +97,10 @@ final class TodayViewModel: ObservableObject {
         let loadHistoryDays = await loadHistoryDaysResult.value ?? loadDays
         let loadHistory = loadCalculator.calculateHistory(days: loadHistoryDays, displayDays: 90)
 
+        let generatedAt = Date()
+
         snapshot = TodayHealthSnapshot(
-            generatedAt: Date(),
+            generatedAt: generatedAt,
             shortTermLoad: load.shortTerm,
             longTermLoad: load.longTerm,
             loadBalance: load.balance,
@@ -133,37 +136,48 @@ final class TodayViewModel: ObservableObject {
         ].compactMap { $0 }
 
         state = failures.isEmpty ? .loaded : .partialData("部分 Apple 健康指标暂不可用")
-        Task { await loadSupplementalHealthData() }
+        supplementalTask?.cancel()
+        supplementalTask = Task { [weak self] in
+            await self?.loadSupplementalHealthData(for: generatedAt)
+        }
     }
 
-    private func loadSupplementalHealthData() async {
+    private func loadSupplementalHealthData(for generatedAt: Date) async {
         async let tsbResult = result { [self] in try await self.loadTSBData() }
         async let heartRateSamplesResult = result { [self] in try await self.healthService.fetchHeartRateSamples(days: 28) }
         async let maxHeartRateResult = result { [self] in try await self.healthService.fetchMaxHeartRate() }
 
-        guard let currentSnapshot = snapshot else { return }
+        guard !Task.isCancelled,
+              let currentSnapshot = snapshot,
+              currentSnapshot.generatedAt == generatedAt
+        else { return }
 
         let samples = await heartRateSamplesResult.value ?? []
         let maxHR = await maxHeartRateResult.value ?? 190
         let focus = buildLoadFocus(samples: samples, maxHR: maxHR, days: 28)
         let distribution = buildHRDistribution(samples: samples, maxHR: maxHR, days: 7)
 
+        guard !Task.isCancelled,
+              let latestSnapshot = snapshot,
+              latestSnapshot.generatedAt == generatedAt
+        else { return }
+
         snapshot = TodayHealthSnapshot(
-            generatedAt: currentSnapshot.generatedAt,
-            shortTermLoad: currentSnapshot.shortTermLoad,
-            longTermLoad: currentSnapshot.longTermLoad,
-            loadBalance: currentSnapshot.loadBalance,
-            hrv: currentSnapshot.hrv,
-            bodyMass: currentSnapshot.bodyMass,
-            todayActivity: currentSnapshot.todayActivity,
-            weeklyRunning: currentSnapshot.weeklyRunning,
-            monthlyRunning: currentSnapshot.monthlyRunning,
-            runningKeyMetrics: currentSnapshot.runningKeyMetrics,
-            loadHistory: currentSnapshot.loadHistory,
-            hrvHistory: currentSnapshot.hrvHistory,
-            bodyMassHistory: currentSnapshot.bodyMassHistory,
-            weeklyRunningHistory: currentSnapshot.weeklyRunningHistory,
-            monthlyRunningHistory: currentSnapshot.monthlyRunningHistory,
+            generatedAt: latestSnapshot.generatedAt,
+            shortTermLoad: latestSnapshot.shortTermLoad,
+            longTermLoad: latestSnapshot.longTermLoad,
+            loadBalance: latestSnapshot.loadBalance,
+            hrv: latestSnapshot.hrv,
+            bodyMass: latestSnapshot.bodyMass,
+            todayActivity: latestSnapshot.todayActivity,
+            weeklyRunning: latestSnapshot.weeklyRunning,
+            monthlyRunning: latestSnapshot.monthlyRunning,
+            runningKeyMetrics: latestSnapshot.runningKeyMetrics,
+            loadHistory: latestSnapshot.loadHistory,
+            hrvHistory: latestSnapshot.hrvHistory,
+            bodyMassHistory: latestSnapshot.bodyMassHistory,
+            weeklyRunningHistory: latestSnapshot.weeklyRunningHistory,
+            monthlyRunningHistory: latestSnapshot.monthlyRunningHistory,
             tsbData: await tsbResult.value,
             loadFocus: focus,
             heartRateDistribution: distribution

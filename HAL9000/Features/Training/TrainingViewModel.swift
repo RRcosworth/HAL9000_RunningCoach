@@ -70,7 +70,6 @@ final class TrainingViewModel: ObservableObject {
     }
 
     func refresh() async {
-        await cache.remove("weekly_data")
         garminExportURL = nil
         exportState = .idle
         await load()
@@ -112,6 +111,7 @@ final class TrainingViewModel: ObservableObject {
     }
 
     func toggleExportSelection(_ session: TrainingSession) {
+        resetPreparedExport()
         if selectedExportIDs.contains(session.id) {
             selectedExportIDs.remove(session.id)
         } else {
@@ -120,10 +120,12 @@ final class TrainingViewModel: ObservableObject {
     }
 
     func selectAllExportableSessions() {
+        resetPreparedExport()
         selectedExportIDs = Set(exportableSessions.map(\.id))
     }
 
     func clearExportSelection() {
+        resetPreparedExport()
         selectedExportIDs.removeAll()
     }
 
@@ -277,7 +279,7 @@ final class TrainingViewModel: ObservableObject {
         progress = cached.value.progress
         weekDays = cached.value.weekDays
         await mergeCurrentWeekHealthData()
-        if weekDays.isEmpty { rebuildWeekDays() }
+        rebuildWeekDays()
         syncSelectedExportIDs()
         cacheNotice = cached.isExpired ? "正在显示缓存数据，数据可能不是最新。" : nil
         state = sessions.isEmpty ? .empty : .loaded
@@ -301,22 +303,25 @@ final class TrainingViewModel: ObservableObject {
                     let right = rhs.startedAt ?? self.date(from: rhs.date) ?? .distantPast
                     return left < right
                 }
-            let session = daySessions.first
 
             return TrainingWeekDay(
                 id: dateKey,
                 date: date,
                 weekday: formatter.string(from: date),
                 title: dateTitle(for: date),
-                session: session,
-                recoveryAdvice: recoveryAdvice(for: date, session: session)
+                sessions: daySessions,
+                recoveryAdvice: recoveryAdvice(for: date, sessions: daySessions)
             )
         }
     }
 
-    private func recoveryAdvice(for date: Date, session: TrainingSession?) -> String {
-        if let session {
-            return session.description ?? "按计划完成，结束后补水、拉伸并观察腿部反馈。"
+    private func recoveryAdvice(for date: Date, sessions: [TrainingSession]) -> String {
+        if let firstSession = sessions.first {
+            if sessions.count > 1 {
+                return "今天有 \(sessions.count) 项训练，优先按时间完成；结束后补水、拉伸并观察腿部反馈。"
+            }
+
+            return firstSession.description ?? "按计划完成，结束后补水、拉伸并观察腿部反馈。"
         }
 
         if Calendar.current.isDateInToday(date) {
@@ -324,6 +329,13 @@ final class TrainingViewModel: ObservableObject {
         }
 
         return "休息日，保持轻量活动，优先恢复。"
+    }
+
+    private func resetPreparedExport() {
+        garminExportURL = nil
+        if case .succeeded = exportState {
+            exportState = .idle
+        }
     }
 
     private func dateTitle(for date: Date) -> String {
