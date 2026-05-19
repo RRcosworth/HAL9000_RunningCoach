@@ -46,9 +46,17 @@
 		B10000000000000000000037 /* IntervalsICUService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003B /* IntervalsICUService.swift */; };
 		B10000000000000000000038 /* RaceLogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003C /* RaceLogModels.swift */; };
 		B10000000000000000000039 /* RaceMapLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003D /* RaceMapLocationProvider.swift */; };
+		B10000000000000000000040 /* CoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003E /* CoachView.swift */; };
+		B10000000000000000000041 /* CoachViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003F /* CoachViewModel.swift */; };
+		B10000000000000000000042 /* CoachModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000040 /* CoachModels.swift */; };
+		B10000000000000000000043 /* CoachContextCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000041 /* CoachContextCollector.swift */; };
+		B10000000000000000000044 /* CoachPlanSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000042 /* CoachPlanSyncService.swift */; };
+		B10000000000000000000045 /* CoachMarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000043 /* CoachMarkdownRenderer.swift */; };
+		B10000000000000000000046 /* CoachEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000044 /* CoachEndpoint.swift */; };
 		B90000000000000000000001 /* TSBCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* TSBCalculatorTests.swift */; };
 		B90000000000000000000002 /* TrainingLoadCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */; };
 		B90000000000000000000003 /* HeartRateZoneCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */; };
+		B90000000000000000000004 /* CoachFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000004 /* CoachFeatureTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -105,10 +113,18 @@
 		F2000000000000000000003B /* IntervalsICUService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsICUService.swift; sourceTree = "<group>"; };
 		F2000000000000000000003C /* RaceLogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceLogModels.swift; sourceTree = "<group>"; };
 		F2000000000000000000003D /* RaceMapLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceMapLocationProvider.swift; sourceTree = "<group>"; };
+		F2000000000000000000003E /* CoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachView.swift; sourceTree = "<group>"; };
+		F2000000000000000000003F /* CoachViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachViewModel.swift; sourceTree = "<group>"; };
+		F20000000000000000000040 /* CoachModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachModels.swift; sourceTree = "<group>"; };
+		F20000000000000000000041 /* CoachContextCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachContextCollector.swift; sourceTree = "<group>"; };
+		F20000000000000000000042 /* CoachPlanSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachPlanSyncService.swift; sourceTree = "<group>"; };
+		F20000000000000000000043 /* CoachMarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachMarkdownRenderer.swift; sourceTree = "<group>"; };
+		F20000000000000000000044 /* CoachEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachEndpoint.swift; sourceTree = "<group>"; };
 		F20000000000000000000100 /* HAL9000.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HAL9000.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F30000000000000000000001 /* TSBCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBCalculatorTests.swift; sourceTree = "<group>"; };
 		F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingLoadCalculatorTests.swift; sourceTree = "<group>"; };
 		F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneCalculatorTests.swift; sourceTree = "<group>"; };
+		F30000000000000000000004 /* CoachFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachFeatureTests.swift; sourceTree = "<group>"; };
 		F30000000000000000000100 /* HAL9000Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HAL9000Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -196,6 +212,7 @@
 				G40000000000000000000032 /* Training */,
 				G40000000000000000000033 /* Analysis */,
 				G40000000000000000000034 /* RaceLog */,
+				G40000000000000000000036 /* Coach */,
 				G40000000000000000000035 /* Profile */,
 			);
 			path = Features;
@@ -251,11 +268,25 @@
 			path = Profile;
 			sourceTree = "<group>";
 		};
+		G40000000000000000000036 /* Coach */ = {
+			isa = PBXGroup;
+			children = (
+				F2000000000000000000003E /* CoachView.swift */,
+				F2000000000000000000003F /* CoachViewModel.swift */,
+				F20000000000000000000040 /* CoachModels.swift */,
+				F20000000000000000000041 /* CoachContextCollector.swift */,
+				F20000000000000000000042 /* CoachPlanSyncService.swift */,
+				F20000000000000000000043 /* CoachMarkdownRenderer.swift */,
+			);
+			path = Coach;
+			sourceTree = "<group>";
+		};
 		G40000000000000000000040 /* Networking */ = {
 			isa = PBXGroup;
 			children = (
 				F20000000000000000000017 /* APIClient.swift */,
 				F20000000000000000000018 /* Endpoint.swift */,
+				F20000000000000000000044 /* CoachEndpoint.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -308,6 +339,7 @@
 				F30000000000000000000001 /* TSBCalculatorTests.swift */,
 				F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */,
 				F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */,
+				F30000000000000000000004 /* CoachFeatureTests.swift */,
 			);
 			path = HAL9000Tests;
 			sourceTree = "<group>";
@@ -429,9 +461,16 @@
 				B10000000000000000000038 /* RaceLogModels.swift in Sources */,
 				B10000000000000000000035 /* RaceMapView.swift in Sources */,
 				B10000000000000000000039 /* RaceMapLocationProvider.swift in Sources */,
+				B10000000000000000000040 /* CoachView.swift in Sources */,
+				B10000000000000000000041 /* CoachViewModel.swift in Sources */,
+				B10000000000000000000042 /* CoachModels.swift in Sources */,
+				B10000000000000000000043 /* CoachContextCollector.swift in Sources */,
+				B10000000000000000000044 /* CoachPlanSyncService.swift in Sources */,
+				B10000000000000000000045 /* CoachMarkdownRenderer.swift in Sources */,
 				B10000000000000000000016 /* ProfileView.swift in Sources */,
 				B10000000000000000000017 /* APIClient.swift in Sources */,
 				B10000000000000000000018 /* Endpoint.swift in Sources */,
+				B10000000000000000000046 /* CoachEndpoint.swift in Sources */,
 				B10000000000000000000019 /* UserSessionStore.swift in Sources */,
 				B10000000000000000000020 /* CacheStore.swift in Sources */,
 				B10000000000000000000033 /* LocalConfiguration.swift in Sources */,
@@ -456,6 +495,7 @@
 				B90000000000000000000001 /* TSBCalculatorTests.swift in Sources */,
 				B90000000000000000000002 /* TrainingLoadCalculatorTests.swift in Sources */,
 				B90000000000000000000003 /* HeartRateZoneCalculatorTests.swift in Sources */,
+				B90000000000000000000004 /* CoachFeatureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

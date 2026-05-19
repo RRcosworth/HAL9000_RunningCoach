@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Root container: ZStack with tab content + floating tab bar.
-/// Five tabs managed by @State, following spec Section 5.1.
+/// Main tabs managed by @State, following spec Section 5.1.
 struct RootView: View {
     @State private var selectedTab: AppTab = .training
 
@@ -15,6 +15,7 @@ struct RootView: View {
                 case .training: TrainingView()
                 case .analysis: AnalysisView()
                 case .raceLog:  RaceLogView()
+                case .coach:    CoachView()
                 case .profile:  ProfileView()
                 }
             }

@@ -23,6 +23,7 @@ HAL9000/
 │   ├── Today/              # Apple Health 健康与跑步 dashboard
 │   ├── Analysis/           # 跑步知识库驱动的训练分析
 │   ├── RaceLog/            # Intervals.icu 比赛地图
+│   ├── Coach/              # Hermes AI 教练对话
 │   └── Profile/            # 占位
 ├── Networking/             # APIClient (async/await), Endpoint, APIError
 ├── Persistence/            # UserSessionStore, CacheStore
@@ -37,7 +38,7 @@ HAL9000/
 | 章节 | 状态 |
 |---|---|
 | §3 技术选型 | ✅ SwiftUI + MVVM + iOS 17+ + async/await |
-| §4 信息架构 | ✅ 5 Tab: Today / Training / Analysis / Race Log / Profile |
+| §4 信息架构 | ✅ 6 Tab: Today / Training / Analysis / Race Log / Coach / Profile |
 | §5 视觉设计 | ✅ ZStack 三层结构：hero + 内容 + 悬浮 Tab Bar |
 | §5.4 浮动 Tab Bar | ✅ 胶囊形、毛玻璃、选中蓝色、椭圆高亮 |
 | §7 项目结构 | ✅ 目录结构与文档一致 |
@@ -52,6 +53,7 @@ HAL9000/
 | M6 Training 课表导出 | ✅ Apple Watch WorkoutKit + Garmin TCX 分享 |
 | M6 Analysis 训练分析 | ✅ 42天趋势 + ATL/CTL/TSB + 稳定性 + 知识库洞察 |
 | M7 Race Log 比赛地图 | ✅ Intervals.icu API + 比赛识别 + MapKit 标记 |
+| M8 Coach AI 教练 | ✅ Coach Tab + Hermes Gateway + 上下文注入 |
 
 ## 里程碑进度
 
@@ -63,6 +65,7 @@ HAL9000/
 - [x] **M6** Training 课表导出到 Apple Watch / Garmin
 - [x] **M6** Analysis 训练分析
 - [x] **M7** Race Log 比赛地图
+- [x] **M8** Coach AI 教练 MVP
 - [ ] **M8** Profile 迁移
 - [ ] **M9** 测试与发布
 
@@ -97,3 +100,21 @@ HAL9000/
 - 比赛识别：仅识别 `Run` / `VirtualRun`，优先使用 `race=true` / `sub_type=RACE`，再用名称、分类、标签关键词识别。
 - 地图标记：优先读取 `start_latlng`，兜底读取 `latlng` / `end_latlng`；坐标缺失时用比赛名称中的城市定位。`latlng` stream 如果只返回纬度序列会被拒绝，避免把纬度误当经度。
 - 后续增强：手动标记某次活动为比赛、Keychain 或后端代理保存 API Key。
+
+## Coach 页面当前口径
+
+- 入口：第 6 个 Tab `Coach`，提供原生 SwiftUI 聊天界面。
+- 上下文：发送前实时收集 Apple Health 中的 TSB/CTL/ATL、训练阶段、周跑量、HRV、心率分区和最近活动。
+- 数据源：`POST /api/coach/chat`，请求体包含 `context`、用户 `message` 和最近 20 条本地对话历史。
+- Markdown：原生渲染粗体、列表、代码块和 Markdown 表格，不使用 WebView。
+- 历史：最近 100 条消息存入本机 UserDefaults，冷启动后可继续查看。
+- Gateway：`HermesGateway/coach_gateway.py` 提供 Flask 路由，默认调用 `hermes ask --skill running-knowledge-base --no-interactive`。
+- Mock：调试时可请求 `/api/coach/chat?mock=true`，无需真实 Hermes 即可验证 iOS 链路。
+
+启动 Gateway 示例：
+
+```bash
+python3 HermesGateway/coach_gateway.py --host 127.0.0.1 --port 5055
+```
+
+真机访问本机 Gateway 时，把 Profile 里的本地服务器地址设为 Mac 的局域网 IP，端口设为 `5055`。

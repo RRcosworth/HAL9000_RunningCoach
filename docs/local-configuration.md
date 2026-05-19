@@ -40,4 +40,12 @@ HAL9000_LOCAL_SERVER_PORT = 5051
 
 `HAL9000_LOCAL_SERVER_PORT`: Local backend port.
 
+Coach uses the same backend base URL as Training. If you run the included Hermes Gateway locally, set the app to local server mode and use port `5055` unless you pass another port:
+
+```sh
+python3 HermesGateway/coach_gateway.py --host 127.0.0.1 --port 5055
+```
+
+For a real iPhone, replace `127.0.0.1` with your Mac's LAN IP in the app's Profile settings.
+
 Intervals.icu API keys are not stored here. Enter them inside the app so they are not baked into builds or committed to GitHub.
