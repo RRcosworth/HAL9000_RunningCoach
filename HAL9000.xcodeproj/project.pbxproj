@@ -40,7 +40,25 @@
 		B10000000000000000000031 /* HeartRateZoneCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000033 /* HeartRateZoneCalculator.swift */; };
 		B10000000000000000000032 /* TSBDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000034 /* TSBDetailView.swift */; };
 		B10000000000000000000033 /* LocalConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000035 /* LocalConfiguration.swift */; };
+		B10000000000000000000034 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000038 /* KeychainStore.swift */; };
+		B10000000000000000000035 /* RaceMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000039 /* RaceMapView.swift */; };
+		B10000000000000000000036 /* RaceLogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003A /* RaceLogViewModel.swift */; };
+		B10000000000000000000037 /* IntervalsICUService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003B /* IntervalsICUService.swift */; };
+		B10000000000000000000038 /* RaceLogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003C /* RaceLogModels.swift */; };
+		B90000000000000000000001 /* TSBCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* TSBCalculatorTests.swift */; };
+		B90000000000000000000002 /* TrainingLoadCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */; };
+		B90000000000000000000003 /* HeartRateZoneCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		XA0000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = R60000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = T50000000000000000000001;
+			remoteInfo = HAL9000;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		F20000000000000000000001 /* NativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeApp.swift; sourceTree = "<group>"; };
@@ -80,11 +98,27 @@
 		F20000000000000000000035 /* LocalConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalConfiguration.swift; sourceTree = "<group>"; };
 		F20000000000000000000036 /* HAL9000.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = HAL9000.xcconfig; sourceTree = "<group>"; };
 		F20000000000000000000037 /* Local.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.example.xcconfig; sourceTree = "<group>"; };
+		F20000000000000000000038 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		F20000000000000000000039 /* RaceMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceMapView.swift; sourceTree = "<group>"; };
+		F2000000000000000000003A /* RaceLogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceLogViewModel.swift; sourceTree = "<group>"; };
+		F2000000000000000000003B /* IntervalsICUService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsICUService.swift; sourceTree = "<group>"; };
+		F2000000000000000000003C /* RaceLogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceLogModels.swift; sourceTree = "<group>"; };
 		F20000000000000000000100 /* HAL9000.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HAL9000.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F30000000000000000000001 /* TSBCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBCalculatorTests.swift; sourceTree = "<group>"; };
+		F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingLoadCalculatorTests.swift; sourceTree = "<group>"; };
+		F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneCalculatorTests.swift; sourceTree = "<group>"; };
+		F30000000000000000000100 /* HAL9000Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HAL9000Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		P30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		P30000000000000000000004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -98,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				G40000000000000000000002 /* HAL9000 */,
+				G40000000000000000000090 /* HAL9000Tests */,
 				G40000000000000000000080 /* Config */,
 				G40000000000000000000003 /* Products */,
 			);
@@ -123,6 +158,7 @@
 			isa = PBXGroup;
 			children = (
 				F20000000000000000000100 /* HAL9000.app */,
+				F30000000000000000000100 /* HAL9000Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -196,6 +232,10 @@
 			isa = PBXGroup;
 			children = (
 				F20000000000000000000015 /* RaceLogView.swift */,
+				F2000000000000000000003A /* RaceLogViewModel.swift */,
+				F2000000000000000000003B /* IntervalsICUService.swift */,
+				F2000000000000000000003C /* RaceLogModels.swift */,
+				F20000000000000000000039 /* RaceMapView.swift */,
 			);
 			path = RaceLog;
 			sourceTree = "<group>";
@@ -222,6 +262,7 @@
 			children = (
 				F20000000000000000000019 /* UserSessionStore.swift */,
 				F20000000000000000000035 /* LocalConfiguration.swift */,
+				F20000000000000000000038 /* KeychainStore.swift */,
 				F20000000000000000000020 /* CacheStore.swift */,
 			);
 			path = Persistence;
@@ -258,6 +299,16 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		G40000000000000000000090 /* HAL9000Tests */ = {
+			isa = PBXGroup;
+			children = (
+				F30000000000000000000001 /* TSBCalculatorTests.swift */,
+				F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */,
+				F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */,
+			);
+			path = HAL9000Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -278,6 +329,23 @@
 			productReference = F20000000000000000000100 /* HAL9000.app */;
 			productType = "com.apple.product-type.application";
 		};
+		T50000000000000000000002 /* HAL9000Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C70000000000000000000003 /* Build configuration list for PBXNativeTarget "HAL9000Tests" */;
+			buildPhases = (
+				P30000000000000000000005 /* Sources */,
+				P30000000000000000000004 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				XB0000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = HAL9000Tests;
+			productName = HAL9000Tests;
+			productReference = F30000000000000000000100 /* HAL9000Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -296,6 +364,10 @@
 							};
 						};
 					};
+					T50000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = T50000000000000000000001;
+					};
 				};
 			};
 			buildConfigurationList = C70000000000000000000001 /* Build configuration list for PBXProject "HAL9000" */;
@@ -312,6 +384,7 @@
 			projectRoot = "";
 			targets = (
 				T50000000000000000000001 /* HAL9000 */,
+				T50000000000000000000002 /* HAL9000Tests */,
 			);
 		};
 /* End PBXProject section */
@@ -348,12 +421,17 @@
 				B10000000000000000000013 /* TrainingModels.swift in Sources */,
 				B10000000000000000000014 /* AnalysisView.swift in Sources */,
 				B10000000000000000000015 /* RaceLogView.swift in Sources */,
+				B10000000000000000000036 /* RaceLogViewModel.swift in Sources */,
+				B10000000000000000000037 /* IntervalsICUService.swift in Sources */,
+				B10000000000000000000038 /* RaceLogModels.swift in Sources */,
+				B10000000000000000000035 /* RaceMapView.swift in Sources */,
 				B10000000000000000000016 /* ProfileView.swift in Sources */,
 				B10000000000000000000017 /* APIClient.swift in Sources */,
 				B10000000000000000000018 /* Endpoint.swift in Sources */,
 				B10000000000000000000019 /* UserSessionStore.swift in Sources */,
 				B10000000000000000000020 /* CacheStore.swift in Sources */,
 				B10000000000000000000033 /* LocalConfiguration.swift in Sources */,
+				B10000000000000000000034 /* KeychainStore.swift in Sources */,
 				B10000000000000000000023 /* HealthAuthorizationState.swift in Sources */,
 				B10000000000000000000024 /* HealthMetricModels.swift in Sources */,
 				B10000000000000000000025 /* TrainingLoadCalculator.swift in Sources */,
@@ -367,7 +445,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		P30000000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B90000000000000000000001 /* TSBCalculatorTests.swift in Sources */,
+				B90000000000000000000002 /* TrainingLoadCalculatorTests.swift in Sources */,
+				B90000000000000000000003 /* HeartRateZoneCalculatorTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		XB0000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = T50000000000000000000001 /* HAL9000 */;
+			targetProxy = XA0000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B80000000000000000000001 /* Debug */ = {
@@ -488,6 +584,44 @@
 			};
 			name = Release;
 		};
+		B80000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F20000000000000000000036 /* HAL9000.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(HAL9000_DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(HAL9000_BUNDLE_IDENTIFIER).tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HAL9000.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HAL9000";
+			};
+			name = Debug;
+		};
+		B80000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F20000000000000000000036 /* HAL9000.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(HAL9000_DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(HAL9000_BUNDLE_IDENTIFIER).tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HAL9000.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HAL9000";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -505,6 +639,15 @@
 			buildConfigurations = (
 				B80000000000000000000003 /* Debug */,
 				B80000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C70000000000000000000003 /* Build configuration list for PBXNativeTarget "HAL9000Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B80000000000000000000005 /* Debug */,
+				B80000000000000000000006 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

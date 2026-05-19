@@ -20,6 +20,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>HAL9000ProfileDisplayName</key>
+	<string>$(HAL9000_PROFILE_DISPLAY_NAME)</string>
 	<key>HAL9000BackendBaseURL</key>
 	<string>$(HAL9000_BACKEND_BASE_URL)</string>
 	<key>HAL9000UseLocalServer</key>

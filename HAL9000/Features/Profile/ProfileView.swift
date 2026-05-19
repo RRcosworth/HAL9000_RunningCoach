@@ -2,9 +2,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @AppStorage("intervalsAthleteId") private var intervalsAthleteId = ""
-    @AppStorage("intervalsApiKey") private var intervalsApiKey = ""
+    @State private var hasIntervalsApiKey = false
 
-    private let defaultIntervalsAthleteId = ""
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     private let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 
@@ -24,6 +23,9 @@ struct ProfileView: View {
         }
         .background {
             AppBackground()
+        }
+        .task {
+            hasIntervalsApiKey = !KeychainStore.string(for: "intervalsApiKey").isEmpty
         }
     }
 
@@ -49,7 +51,7 @@ struct ProfileView: View {
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Justin Song")
+                    Text(LocalConfiguration.profileDisplayName)
                         .font(AppTypography.title3)
                         .foregroundStyle(AppColor.textPrimary)
                     Text("跑步训练 · HAL9000 Runner Coach")
@@ -103,10 +105,10 @@ struct ProfileView: View {
                 mutedNote("当前使用 Athlete ID + API Key 接入；后续扩展多用户时再切换 OAuth 会更稳。")
 
                 SyncSummary(
-                    title: intervalsApiKey.isEmpty ? "等待配置" : "同步成功",
-                    subtitle: intervalsApiKey.isEmpty
-                        ? "Race Log 需要 Intervals.icu API Key 才能同步比赛。"
-                        : "Race Log 已使用 Intervals.icu 拉取活动并识别比赛地图。"
+                    title: hasIntervalsApiKey ? "同步成功" : "等待配置",
+                    subtitle: hasIntervalsApiKey
+                        ? "Race Log 已使用 Intervals.icu 拉取活动并识别比赛地图。"
+                        : "Race Log 需要 Intervals.icu API Key 才能同步比赛。"
                 )
 
                 divider
@@ -167,7 +169,7 @@ struct ProfileView: View {
                 divider
                 idRow("Bundle ID", "com.hal9000.runnercoach")
                 divider
-                idRow("数据策略", "本地优先 · 密钥开发版内置")
+                idRow("数据策略", "本地优先 · 密钥存入 Keychain")
             }
         }
     }
@@ -181,11 +183,11 @@ struct ProfileView: View {
 
     private var intervalsAthleteIdText: String {
         let trimmed = intervalsAthleteId.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? defaultIntervalsAthleteId : trimmed
+        return trimmed.isEmpty ? "未配置" : trimmed
     }
 
     private var intervalsConnectionText: String {
-        intervalsApiKey.isEmpty ? "未配置 API Key" : "已连接 - 比赛、活动、轨迹摘要"
+        hasIntervalsApiKey ? "已连接 - 比赛、活动、轨迹摘要" : "未配置 API Key"
     }
 
     private func sectionTitle(_ title: String) -> some View {

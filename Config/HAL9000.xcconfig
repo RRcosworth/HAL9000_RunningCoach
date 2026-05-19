@@ -1,6 +1,7 @@
 // Shared build settings. Safe to commit.
 HAL9000_DEVELOPMENT_TEAM =
 HAL9000_BUNDLE_IDENTIFIER = com.hal9000.runnercoach
+HAL9000_PROFILE_DISPLAY_NAME = Runner
 
 // Optional default backend configuration for local builds.
 // The app still lets users override these values at runtime.

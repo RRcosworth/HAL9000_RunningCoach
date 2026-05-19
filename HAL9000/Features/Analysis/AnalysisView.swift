@@ -373,6 +373,22 @@ struct AnalysisSnapshot: Equatable {
     let insights: [AnalysisInsight]
     let referenceMileageKm: Double
 
+    func withInsights(_ insights: [AnalysisInsight]) -> AnalysisSnapshot {
+        AnalysisSnapshot(
+            generatedAt: generatedAt,
+            weeklyVolumes: weeklyVolumes,
+            shortTermLoad: shortTermLoad,
+            longTermLoad: longTermLoad,
+            loadBalance: loadBalance,
+            sevenDayDistanceKm: sevenDayDistanceKm,
+            fortyTwoDayDistanceKm: fortyTwoDayDistanceKm,
+            weeklyVariation: weeklyVariation,
+            daysSinceLastRun: daysSinceLastRun,
+            insights: insights,
+            referenceMileageKm: referenceMileageKm
+        )
+    }
+
     var sevenDayDistanceText: String {
         String(format: "%.1f km", sevenDayDistanceKm)
     }
@@ -488,19 +504,7 @@ struct AnalysisSnapshotBuilder {
             referenceMileageKm: referenceMileageKm
         )
 
-        return AnalysisSnapshot(
-            generatedAt: snapshot.generatedAt,
-            weeklyVolumes: snapshot.weeklyVolumes,
-            shortTermLoad: snapshot.shortTermLoad,
-            longTermLoad: snapshot.longTermLoad,
-            loadBalance: snapshot.loadBalance,
-            sevenDayDistanceKm: snapshot.sevenDayDistanceKm,
-            fortyTwoDayDistanceKm: snapshot.fortyTwoDayDistanceKm,
-            weeklyVariation: snapshot.weeklyVariation,
-            daysSinceLastRun: snapshot.daysSinceLastRun,
-            insights: buildInsights(snapshot),
-            referenceMileageKm: snapshot.referenceMileageKm
-        )
+        return snapshot.withInsights(buildInsights(snapshot))
     }
 
     private func buildWeeklyVolumes(days: [RunningLoadDay]) -> [AnalysisWeekVolume] {

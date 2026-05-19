@@ -23,7 +23,10 @@ final class UserSessionStore: ObservableObject {
 
     var resolvedBaseURL: URL? {
         if useLocalServer {
-            return URL(string: "http://\(localIP):\(localPort)")!
+            let host = localIP.trimmingCharacters(in: .whitespacesAndNewlines)
+            let port = localPort.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !host.isEmpty, !port.isEmpty else { return nil }
+            return URL(string: "http://\(host):\(port)")
         }
         let trimmed = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }

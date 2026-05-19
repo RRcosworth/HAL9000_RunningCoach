@@ -1,6 +1,10 @@
 import Foundation
 
 enum LocalConfiguration {
+    static var profileDisplayName: String {
+        infoString("HAL9000ProfileDisplayName", fallback: "Runner")
+    }
+
     static var backendBaseURL: String {
         infoString("HAL9000BackendBaseURL")
     }

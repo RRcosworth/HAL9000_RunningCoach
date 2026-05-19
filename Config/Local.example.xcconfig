@@ -7,6 +7,9 @@ HAL9000_DEVELOPMENT_TEAM =
 // Keep this stable once the app is installed, otherwise iOS treats it as a different app.
 HAL9000_BUNDLE_IDENTIFIER = com.hal9000.runnercoach
 
+// Display name shown on the Profile tab.
+HAL9000_PROFILE_DISPLAY_NAME = Runner
+
 // Remote backend URL, if you use one. Do not include a trailing slash.
 HAL9000_BACKEND_BASE_URL =
 

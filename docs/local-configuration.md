@@ -17,6 +17,7 @@ Then fill the values you need:
 ```xcconfig
 HAL9000_DEVELOPMENT_TEAM =
 HAL9000_BUNDLE_IDENTIFIER = com.hal9000.runnercoach
+HAL9000_PROFILE_DISPLAY_NAME = Runner
 HAL9000_BACKEND_BASE_URL =
 HAL9000_USE_LOCAL_SERVER = NO
 HAL9000_LOCAL_SERVER_HOST = 127.0.0.1
@@ -28,6 +29,8 @@ HAL9000_LOCAL_SERVER_PORT = 5051
 `HAL9000_DEVELOPMENT_TEAM`: Apple Developer Team ID. Required when installing on a real iPhone.
 
 `HAL9000_BUNDLE_IDENTIFIER`: App bundle identifier. Keep it stable after installing the app, otherwise iOS treats the next build as a different app.
+
+`HAL9000_PROFILE_DISPLAY_NAME`: Display name shown on the Profile tab.
 
 `HAL9000_BACKEND_BASE_URL`: Remote backend URL for Training data, without a trailing slash. Leave empty if you do not use a remote backend.
 

@@ -1,0 +1,110 @@
+import CoreLocation
+import Foundation
+
+actor IntervalsICUService {
+    private let baseURL = URL(string: "https://intervals.icu")!
+    private let session = URLSession.shared
+
+    func fetchAthleteId(apiKey: String) async throws -> String {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/athlete/me"))
+        request.setValue(authorizationHeader(apiKey: apiKey), forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response)
+
+        let athlete = try JSONDecoder().decode(IntervalsAthlete.self, from: data)
+        return athlete.id
+    }
+
+    func fetchActivities(apiKey: String, athleteId: String) async throws -> [IntervalsActivity] {
+        let newest = Date()
+        let oldest = Calendar.current.date(byAdding: .year, value: -8, to: newest) ?? newest
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/athlete/\(athleteId)/activities"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "oldest", value: isoDate(oldest)),
+            URLQueryItem(name: "newest", value: isoDate(newest)),
+            URLQueryItem(name: "fields", value: [
+                "id",
+                "name",
+                "type",
+                "start_date_local",
+                "start_date",
+                "distance",
+                "icu_distance",
+                "moving_time",
+                "elapsed_time",
+                "average_heartrate",
+                "start_latlng",
+                "end_latlng",
+                "latlng",
+                "location",
+                "tags",
+                "category",
+                "sub_type",
+                "race"
+            ].joined(separator: ","))
+        ]
+
+        guard let url = components?.url else { throw IntervalsICUError.invalidURL }
+        var request = URLRequest(url: url)
+        request.setValue(authorizationHeader(apiKey: apiKey), forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            if let date = ISO8601DateFormatter.intervalsWithFractionalSeconds.date(from: value)
+                ?? ISO8601DateFormatter.intervals.date(from: value) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(value)")
+        }
+
+        return try decoder.decode([IntervalsActivity].self, from: data)
+    }
+
+    func fetchStartCoordinate(apiKey: String, activityId: String) async throws -> CLLocationCoordinate2D? {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/activity/\(activityId)/streams"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "types", value: "latlng")
+        ]
+
+        guard let url = components?.url else { throw IntervalsICUError.invalidURL }
+        var request = URLRequest(url: url)
+        request.setValue(authorizationHeader(apiKey: apiKey), forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response)
+
+        let streams = try JSONDecoder().decode([IntervalsStream].self, from: data)
+        return streams.first(where: { $0.type == "latlng" })?.startCoordinate
+    }
+
+    private func authorizationHeader(apiKey: String) -> String {
+        let token = "API_KEY:\(apiKey)"
+        let encoded = Data(token.utf8).base64EncodedString()
+        return "Basic \(encoded)"
+    }
+
+    private func validate(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw IntervalsICUError.invalidResponse
+        }
+
+        guard (200..<300).contains(http.statusCode) else {
+            if http.statusCode == 401 { throw IntervalsICUError.unauthorized }
+            throw IntervalsICUError.statusCode(http.statusCode)
+        }
+    }
+
+    private func isoDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+}
