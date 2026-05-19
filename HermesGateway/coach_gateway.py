@@ -6,6 +6,7 @@ import subprocess
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from flask import Flask, jsonify, request
@@ -31,6 +32,70 @@ class RateLimiter:
 
 
 limiter = RateLimiter()
+
+
+@app.get("/api/weekly")
+def weekly_plan():
+    anchor = parse_query_date(request.args.get("date"))
+    week_start = anchor - timedelta(days=anchor.weekday())
+    sessions = [
+        fallback_session(week_start + timedelta(days=2), "周三", 8, "45min", "轻松跑 8 km，保持能完整说话的强度。"),
+        fallback_session(week_start + timedelta(days=4), "周五", 6, "35min", "轻松跑 6 km，结束后做 4 组短加速。"),
+        fallback_session(week_start + timedelta(days=6), "周日", 10, "60min", "长一点的有氧跑 10 km，心率稳定优先。"),
+    ]
+
+    return jsonify(
+        {
+            "week_label": "本周",
+            "week_range": f"{week_start.isoformat()} - {(week_start + timedelta(days=6)).isoformat()}",
+            "activities": {
+                "run": {
+                    "count": 0,
+                    "distance_km": 0,
+                    "duration_sec": 0,
+                    "duration_fmt": "0h0m",
+                }
+            },
+            "diagnosis": {
+                "phase": "base",
+                "phase_name": "基础有氧",
+                "intensity": "easy",
+                "intensity_name": "低强度",
+            },
+            "plan_summary": {
+                "target_km": 24,
+                "completed_km": 0,
+                "remaining_km": 24,
+                "target_reason": "本地网关兜底计划。连接 Hermes 正式后端后会替换为动态训练计划。",
+            },
+            "headline": "本地训练计划已就绪",
+            "plan": sessions,
+        }
+    )
+
+
+def parse_query_date(value: str | None) -> date:
+    if not value:
+        return date.today()
+    try:
+        return datetime.strptime(value[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return date.today()
+
+
+def fallback_session(day: date, label: str, distance_km: int, duration: str, detail: str) -> dict[str, Any]:
+    return {
+        "iso_date": day.isoformat(),
+        "date": day.strftime("%m/%d"),
+        "day": label,
+        "type": "Run",
+        "duration": duration,
+        "planned_distance_km": distance_km,
+        "detail": detail,
+        "reason": "先恢复 Training 页可用性，正式计划由 Hermes 后端生成。",
+        "status": "planned",
+        "zone": "Z2",
+    }
 
 
 @app.post("/api/coach/chat")

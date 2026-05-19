@@ -22,7 +22,10 @@ final class UserSessionStore: ObservableObject {
     }
 
     var resolvedBaseURL: URL? {
-        if useLocalServer {
+        let shouldUseLocalServer = useLocalServer
+            || (serverURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && LocalConfiguration.useLocalServer)
+
+        if shouldUseLocalServer {
             let host = localIP.trimmingCharacters(in: .whitespacesAndNewlines)
             let port = localPort.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !host.isEmpty, !port.isEmpty else { return nil }
@@ -42,7 +45,11 @@ final class UserSessionStore: ObservableObject {
             ?? LocalConfiguration.localServerHost
         self.localPort = defaults.string(forKey: "localPort")
             ?? LocalConfiguration.localServerPort
-        self.serverURL = UserDefaults.standard.string(forKey: "serverURL")
-            ?? LocalConfiguration.backendBaseURL
+
+        let storedServerURL = defaults.string(forKey: "serverURL")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        self.serverURL = storedServerURL?.isEmpty == false
+            ? storedServerURL ?? ""
+            : LocalConfiguration.backendBaseURL
     }
 }

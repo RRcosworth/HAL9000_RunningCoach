@@ -34,7 +34,11 @@ struct CoachView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 14)
-                    .padding(.bottom, 188)
+                    .padding(.bottom, inputFocused ? 92 : 188)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onTapGesture {
+                    inputFocused = false
                 }
                 .onChange(of: viewModel.messages.count) { _, _ in
                     scrollToBottom(proxy)
@@ -46,8 +50,10 @@ struct CoachView: View {
 
             CoachInputBar(
                 text: $viewModel.draft,
+                isFocused: inputFocused,
                 isSending: viewModel.state == .loading,
                 onSend: {
+                    inputFocused = false
                     Task { await viewModel.send() }
                 }
             )
@@ -218,6 +224,7 @@ private struct CoachTypingBubble: View {
 
 private struct CoachInputBar: View {
     @Binding var text: String
+    let isFocused: Bool
     let isSending: Bool
     let onSend: () -> Void
 
@@ -227,6 +234,10 @@ private struct CoachInputBar: View {
                 .textFieldStyle(.plain)
                 .font(AppTypography.subheadline)
                 .lineLimit(1...4)
+                .submitLabel(.send)
+                .onSubmit {
+                    if canSend { onSend() }
+                }
                 .padding(.vertical, 11)
                 .padding(.horizontal, 12)
                 .background(AppColor.controlBackground, in: RoundedRectangle(cornerRadius: 8))
@@ -243,7 +254,7 @@ private struct CoachInputBar: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
-        .padding(.bottom, 118)
+        .padding(.bottom, isFocused ? 12 : 118)
         .background(.ultraThinMaterial)
     }
 
