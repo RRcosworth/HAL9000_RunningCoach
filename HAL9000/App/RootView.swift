@@ -17,7 +17,6 @@ struct RootView: View {
                 case .training: TrainingView()
                 case .analysis: AnalysisView()
                 case .raceLog:  RaceLogView()
-                case .coach:    CoachView()
                 case .profile:  ProfileView()
                 }
             }
