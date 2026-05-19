@@ -6,7 +6,7 @@ actor APIClient {
     static let shared = APIClient()
 
     private let session: URLSession
-    private var baseURL: URL
+    private var baseURL: URL?
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -14,19 +14,22 @@ actor APIClient {
         config.timeoutIntervalForResource = 30
         session = URLSession(configuration: config)
 
-        // Default to Modal cloud; can be switched via settings
-        baseURL = URL(string: "https://example.com")!
+        baseURL = nil
     }
 
     // MARK: - Configuration
 
-    func updateBaseURL(_ url: URL) {
+    func updateBaseURL(_ url: URL?) {
         baseURL = url
     }
 
     // MARK: - Request
 
     func send<T: Decodable>(_ endpoint: Endpoint) async throws -> T {
+        guard let baseURL else {
+            throw APIError.missingServerURL
+        }
+
         let request = try endpoint.makeRequest(baseURL: baseURL)
         let (data, response) = try await session.data(for: request)
 
@@ -49,6 +52,10 @@ actor APIClient {
     }
 
     func sendRaw(_ endpoint: Endpoint) async throws -> Data {
+        guard let baseURL else {
+            throw APIError.missingServerURL
+        }
+
         let request = try endpoint.makeRequest(baseURL: baseURL)
         let (data, response) = try await session.data(for: request)
 

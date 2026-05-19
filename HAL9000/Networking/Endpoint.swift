@@ -4,6 +4,7 @@ import Foundation
 
 enum APIError: LocalizedError {
     case invalidURL
+    case missingServerURL
     case invalidResponse
     case statusCode(Int)
     case decodingFailed(Error)
@@ -13,6 +14,7 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:        return "无效的 URL"
+        case .missingServerURL:  return "请先配置后端服务地址"
         case .invalidResponse:   return "服务器响应异常"
         case .statusCode(let c): return "服务器错误 (\(c))"
         case .decodingFailed:    return "数据解析失败"

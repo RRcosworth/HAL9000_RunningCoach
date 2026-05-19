@@ -21,11 +21,13 @@ final class UserSessionStore: ObservableObject {
         didSet { UserDefaults.standard.set(serverURL, forKey: "serverURL") }
     }
 
-    var resolvedBaseURL: URL {
+    var resolvedBaseURL: URL? {
         if useLocalServer {
             return URL(string: "http://\(localIP):\(localPort)")!
         }
-        return URL(string: serverURL)!
+        let trimmed = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return URL(string: trimmed)
     }
 
     private init() {
@@ -33,6 +35,6 @@ final class UserSessionStore: ObservableObject {
         self.localIP = UserDefaults.standard.string(forKey: "localIP") ?? "127.0.0.1"
         self.localPort = UserDefaults.standard.string(forKey: "localPort") ?? "5051"
         self.serverURL = UserDefaults.standard.string(forKey: "serverURL")
-            ?? "https://example.com"
+            ?? ""
     }
 }
