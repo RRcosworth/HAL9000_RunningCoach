@@ -117,11 +117,13 @@ def coach_chat():
             }
         )
 
+    context = payload.get("context") or {}
     prompt = build_prompt(payload)
     try:
         reply = ask_hermes(prompt)
-    except RuntimeError as exc:
-        return jsonify({"error": str(exc)}), 502
+    except (RuntimeError, subprocess.TimeoutExpired) as exc:
+        app.logger.warning("Hermes fallback reply used: %s", exc)
+        return jsonify({"reply": fallback_coach_reply(str(exc), context), "plan_patch": None, "tokens_used": None})
 
     return jsonify({"reply": reply, "plan_patch": extract_plan_patch(reply), "tokens_used": None})
 
@@ -159,16 +161,28 @@ def build_prompt(payload: dict[str, Any]) -> str:
 def ask_hermes(prompt: str) -> str:
     command = [
         "hermes",
-        "ask",
+        "-z",
         prompt,
-        "--skill",
+        "--skills",
         "running-knowledge-base",
-        "--no-interactive",
+        "--ignore-rules",
     ]
-    completed = subprocess.run(command, text=True, capture_output=True, timeout=45, check=False)
+    completed = subprocess.run(command, text=True, capture_output=True, timeout=18, check=False)
     if completed.returncode != 0:
         raise RuntimeError(completed.stderr.strip() or "Hermes command failed")
     return completed.stdout.strip()
+
+
+def fallback_coach_reply(error: str, context: dict[str, Any]) -> str:
+    tsb = context.get("tsb")
+    tsb_value = tsb.get("form") if isinstance(tsb, dict) else None
+    tsb_line = f"\n\n当前 Form/TSB：{tsb_value}" if tsb_value is not None else ""
+    return (
+        "**Hermes 暂时没有完成回复，但我先给你一个保守建议。**\n\n"
+        "今天先按低强度处理：轻松跑或休息优先，不临时加质量课；如果腿感沉、睡眠差或 HRV 偏低，就直接恢复。"
+        f"{tsb_line}\n\n"
+        "你可以稍后再问一次，我会继续尝试连接本地 Hermes。"
+    )
 
 
 def extract_plan_patch(reply: str) -> dict[str, Any] | None:
