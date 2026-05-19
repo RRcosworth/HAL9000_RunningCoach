@@ -67,18 +67,7 @@ actor HealthKitService: HealthKitServing {
 
     func authorizationState() async -> HealthAuthorizationState {
         guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
-        guard let stepType = quantityType(.stepCount) else { return .unavailable }
-
-        switch healthStore.authorizationStatus(for: stepType) {
-        case .notDetermined:
-            return .notDetermined
-        case .sharingDenied:
-            return .sharingDenied
-        case .sharingAuthorized:
-            return .authorized
-        @unknown default:
-            return .notDetermined
-        }
+        return .authorized
     }
 
     private var hasRequestedAuthorization: Bool {
