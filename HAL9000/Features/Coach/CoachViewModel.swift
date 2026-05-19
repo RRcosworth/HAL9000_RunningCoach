@@ -93,9 +93,9 @@ final class CoachViewModel: ObservableObject {
 
     private func fallbackReply(for error: Error) -> String {
         if case APIError.missingServerURL = error {
-            return "**教练暂时不在线。**\n\n请先在 Profile 里配置本地 Hermes Gateway 地址，然后我就能带着你的训练上下文去问 Hermes。"
+            return "**本地 proxy 还没有配置。**\n\n请确认 Profile 里的 Hermes Gateway 地址指向你的 Mac，例如 `http://192.168.31.175:5055`。"
         }
 
-        return "**教练暂时不在线。**\n\n我已经保留了你的问题。检查 Hermes Gateway 是否启动后，可以再发送一次。错误：\(error.localizedDescription)"
+        return "**这次没有连上 Mac 本地 proxy。**\n\n请确认 Mac 和 iPhone 在同一个 Wi-Fi，并且 Hermes Gateway 正在 `5055` 端口运行。你的问题已经保留，可以稍后重发。"
     }
 }

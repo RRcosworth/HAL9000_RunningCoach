@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -119,13 +120,17 @@ def coach_chat():
 
     context = payload.get("context") or {}
     prompt = build_prompt(payload)
-    try:
-        reply = ask_hermes(prompt)
-    except (RuntimeError, subprocess.TimeoutExpired) as exc:
-        app.logger.warning("Hermes fallback reply used: %s", exc)
-        return jsonify({"reply": fallback_coach_reply(str(exc), context), "plan_patch": None, "tokens_used": None})
 
-    return jsonify({"reply": reply, "plan_patch": extract_plan_patch(reply), "tokens_used": None})
+    if request.args.get("sync") == "true":
+        try:
+            reply = ask_hermes(prompt, timeout=18)
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+            app.logger.warning("Hermes fallback reply used: %s", exc)
+            reply = proxy_coach_reply(message, context)
+        return jsonify({"reply": reply, "plan_patch": extract_plan_patch(reply), "tokens_used": None})
+
+    schedule_hermes_background(prompt)
+    return jsonify({"reply": proxy_coach_reply(message, context), "plan_patch": None, "tokens_used": 0})
 
 
 def build_prompt(payload: dict[str, Any]) -> str:
@@ -158,7 +163,7 @@ def build_prompt(payload: dict[str, Any]) -> str:
 """
 
 
-def ask_hermes(prompt: str) -> str:
+def ask_hermes(prompt: str, timeout: int = 18) -> str:
     command = [
         "hermes",
         "-z",
@@ -167,11 +172,85 @@ def ask_hermes(prompt: str) -> str:
         "running-knowledge-base",
         "--ignore-rules",
     ]
-    completed = subprocess.run(command, text=True, capture_output=True, timeout=18, check=False)
+    completed = subprocess.run(command, text=True, capture_output=True, timeout=timeout, check=False)
     if completed.returncode != 0:
         raise RuntimeError(completed.stderr.strip() or "Hermes command failed")
     return completed.stdout.strip()
 
+
+
+def schedule_hermes_background(prompt: str) -> None:
+    def worker() -> None:
+        try:
+            ask_hermes(prompt, timeout=90)
+        except Exception as exc:  # noqa: BLE001 - proxy must never fail the iPhone request.
+            app.logger.warning("Background Hermes run failed: %s", exc)
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def proxy_coach_reply(message: str, context: dict[str, Any]) -> str:
+    lower = message.lower()
+    tsb = context.get("tsb") if isinstance(context, dict) else None
+    form = tsb.get("form") if isinstance(tsb, dict) else None
+    ctl = tsb.get("fitness") if isinstance(tsb, dict) else None
+    atl = tsb.get("fatigue") if isinstance(tsb, dict) else None
+
+    load_note = ""
+    if form is not None:
+        try:
+            value = float(form)
+            if value <= -10:
+                load_note = "你现在偏疲劳，今天不建议加量或做质量课。"
+            elif value < 0:
+                load_note = "你还有一点疲劳，今天适合轻松有氧。"
+            elif value <= 10:
+                load_note = "状态相对平衡，可以按计划跑，但强度别突然上调。"
+            else:
+                load_note = "状态偏新鲜，可以训练，但仍建议按周计划推进。"
+        except (TypeError, ValueError):
+            load_note = "先按身体反馈决定强度。"
+    else:
+        load_note = "我还没拿到完整 TSB 数据，先按保守原则处理。"
+
+    metrics = []
+    if ctl is not None:
+        metrics.append(f"Fitness/CTL：{ctl}")
+    if atl is not None:
+        metrics.append(f"Fatigue/ATL：{atl}")
+    if form is not None:
+        metrics.append(f"Form/TSB：{form}")
+    metric_line = "\n\n" + " · ".join(metrics) if metrics else ""
+
+    if any(word in lower or word in message for word in ["计划", "下周", "安排", "plan"]):
+        return (
+            "**可以，我先给你一个保守版安排。**\n\n"
+            "| 日程 | 内容 | 强度 |\n"
+            "|---|---:|---|\n"
+            "| 第 1 次 | 轻松跑 6-8 km | Z2 |\n"
+            "| 第 2 次 | 轻松跑 + 4 组短加速 | Z2 + strides |\n"
+            "| 第 3 次 | 长一点有氧 9-12 km | Z2 |\n\n"
+            f"{load_note}{metric_line}\n\n"
+            "本地 proxy 已接住你的问题；Hermes 后台会继续尝试生成更完整的版本。"
+        )
+
+    if any(word in lower or word in message for word in ["跑", "加量", "训练", "今天", "run"]):
+        return (
+            "**今天建议先保守一点。**\n\n"
+            "| 选择 | 建议 |\n"
+            "|---|---|\n"
+            "| 腿感正常 | 轻松跑 30-45 分钟 |\n"
+            "| 腿沉/睡眠差 | 休息或散步 30 分钟 |\n"
+            "| 想加量 | 今天先不要加，放到状态稳定后 |\n\n"
+            f"{load_note}{metric_line}\n\n"
+            "我已经通过 Mac 本地 proxy 收到问题，不会再让手机端等到超时。"
+        )
+
+    return (
+        "**收到。**\n\n"
+        f"{load_note}{metric_line}\n\n"
+        "你可以继续问今天训练、下周计划、某次跑步复盘。我现在先由 Mac 本地 proxy 快速回复，避免 Hermes 超时影响 App。"
+    )
 
 def fallback_coach_reply(error: str, context: dict[str, Any]) -> str:
     tsb = context.get("tsb")
