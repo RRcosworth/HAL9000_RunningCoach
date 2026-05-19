@@ -20,3 +20,17 @@ Implemented the Training week view follow-up requested on 2026-05-20.
 ## Verification
 
 - `xcodebuild -project HAL9000.xcodeproj -scheme HAL9000 -destination 'id=D8F5F63F-76BF-5E5F-B6F1-9A35CFEF5EBD' build`
+
+## Follow-up: Cache, Week View, Selective Export
+
+Implemented the 3-part Training upgrade requested after the first pass.
+
+- `CacheStore` now persists cache entries to disk under Application Support, while keeping the existing in-memory fast path.
+- Training reads disk cache on cold start and can show expired cache with a visible stale-data notice while refreshing in the background.
+- Weekly cache TTL is now 24 hours.
+- Training plan layout now renders a Monday-to-Sunday `TrainingWeekDay` view with rest-day cards.
+- Export is now a sheet-driven multi-select flow. The user selects planned running sessions before syncing to Apple Watch or generating Garmin TCX.
+
+Verification:
+
+- `xcodebuild -project HAL9000.xcodeproj -scheme HAL9000 -destination 'id=D8F5F63F-76BF-5E5F-B6F1-9A35CFEF5EBD' build`

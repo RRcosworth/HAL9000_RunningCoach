@@ -3,6 +3,7 @@ import UIKit
 
 struct TrainingView: View {
     @StateObject private var viewModel = TrainingViewModel()
+    @State private var showsExportSheet = false
 
     var body: some View {
         NavigationStack {
@@ -71,6 +72,10 @@ struct TrainingView: View {
 
     private var loadedContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let cacheNotice = viewModel.cacheNotice {
+                cacheNoticeCard(cacheNotice)
+            }
+
             if let progress = viewModel.progress {
                 progressCard(progress)
             }
@@ -80,14 +85,20 @@ struct TrainingView: View {
             }
 
             exportSection
-            planSection
+            weekPlanSection
             historySection
+        }
+        .sheet(isPresented: $showsExportSheet) {
+            exportSheet
         }
     }
 
     private var exportSection: some View {
         trainingCard {
-            VStack(alignment: .leading, spacing: 14) {
+            Button {
+                viewModel.selectAllExportableSessions()
+                showsExportSheet = true
+            } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("导出课表")
@@ -105,50 +116,17 @@ struct TrainingView: View {
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(AppColor.accent)
                 }
-
-                HStack(spacing: 10) {
-                    Button {
-                        Task { await viewModel.exportToAppleWatch() }
-                    } label: {
-                        exportButtonLabel("Apple Watch", icon: "applewatch")
-                    }
-                    .buttonStyle(.plain)
-
-                    if let url = viewModel.garminExportURL {
-                        ShareLink(item: url) {
-                            exportButtonLabel("分享 TCX", icon: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        Button {
-                            viewModel.prepareGarminExport()
-                        } label: {
-                            exportButtonLabel("Garmin", icon: "location.north.line")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
             }
+            .buttonStyle(.plain)
         }
     }
 
-    private var planSection: some View {
+    private var weekPlanSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("动态训练计划", trailing: "\(plannedSessions.count) 项")
+            sectionHeader("本周训练计划", trailing: "7 天")
 
-            if plannedSessions.isEmpty {
-                trainingCard {
-                    Label("本周计划已完成", systemImage: "checkmark.seal.fill")
-                        .font(AppTypography.headline)
-                        .foregroundStyle(AppColor.success)
-                    Text("后续以恢复、拉伸和睡眠为主，等待 Hermes 生成下一周安排。")
-                        .font(AppTypography.footnote)
-                        .foregroundStyle(AppColor.textSecondary)
-                }
-            } else {
-                ForEach(plannedSessions) { session in
-                    planCard(session)
-                }
+            ForEach(viewModel.weekDays) { day in
+                weekDayCard(day)
             }
         }
     }
@@ -217,6 +195,22 @@ struct TrainingView: View {
         }
     }
 
+    private func cacheNoticeCard(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AppColor.warning)
+            Text(message)
+                .font(AppTypography.footnote)
+                .foregroundStyle(AppColor.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
+        .padding(12)
+        .background(AppColor.warning.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
     private func weeklyStatsRow(summary: WeeklySummary) -> some View {
         HStack(spacing: 10) {
             statCard(icon: "figure.run", value: summary.totalDistanceKm, label: "距离")
@@ -254,6 +248,61 @@ struct TrainingView: View {
                         infoChip(session.durationFormatted, icon: "stopwatch")
                         if let zone = session.zone, !zone.isEmpty {
                             infoChip(zone, icon: "waveform.path.ecg")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func weekDayCard(_ day: TrainingWeekDay) -> some View {
+        trainingCard {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(spacing: 3) {
+                    Text(day.weekday)
+                        .font(AppTypography.captionBold)
+                    Text(day.title)
+                        .font(AppTypography.caption)
+                }
+                .foregroundStyle(day.isToday ? AppColor.accent : AppColor.textSecondary)
+                .frame(width: 48)
+                .padding(.vertical, 7)
+                .background(day.isToday ? AppColor.accent.opacity(0.12) : AppColor.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                Image(systemName: day.session?.typeIcon ?? "moon.zzz.fill")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(day.session == nil ? AppColor.textTertiary : AppColor.accent)
+                    .frame(width: 38, height: 38)
+                    .background((day.session == nil ? AppColor.textTertiary : AppColor.accent).opacity(0.12))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(day.session?.name ?? "休息日")
+                            .font(AppTypography.headline)
+                            .foregroundStyle(AppColor.textPrimary)
+                            .lineLimit(1)
+                        Spacer()
+                        if let session = day.session {
+                            Text(session.isCompleted ? "已完成" : "计划")
+                                .font(AppTypography.caption)
+                                .foregroundStyle(session.isCompleted ? AppColor.success : AppColor.accent)
+                        }
+                    }
+
+                    Text(day.recoveryAdvice)
+                        .font(AppTypography.footnote)
+                        .foregroundStyle(AppColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let session = day.session {
+                        HStack(spacing: 8) {
+                            infoChip(session.planDistanceKm, icon: "ruler")
+                            infoChip(session.durationFormatted, icon: "stopwatch")
+                            if let zone = session.zone, !zone.isEmpty {
+                                infoChip(zone, icon: "waveform.path.ecg")
+                            }
                         }
                     }
                 }
@@ -449,6 +498,114 @@ struct TrainingView: View {
         default:
             return AppColor.textSecondary
         }
+    }
+
+    private var exportSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                if viewModel.exportableSessions.isEmpty {
+                    EmptyStateView(
+                        systemImage: "applewatch",
+                        title: "没有可导出的训练",
+                        subtitle: "只有未完成的跑步计划会出现在这里。",
+                        actionTitle: nil,
+                        action: nil
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            ForEach(viewModel.exportableSessions) { session in
+                                exportSelectionRow(session)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            Task { await viewModel.exportToAppleWatch(viewModel.selectedExportSessions) }
+                        } label: {
+                            exportButtonLabel("同步到 Apple Watch", icon: "applewatch")
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedExportSessions.isEmpty)
+                        .opacity(viewModel.selectedExportSessions.isEmpty ? 0.5 : 1)
+
+                        if let url = viewModel.garminExportURL {
+                            ShareLink(item: url) {
+                                exportButtonLabel("分享 Garmin TCX", icon: "square.and.arrow.up")
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button {
+                                viewModel.prepareGarminExport(viewModel.selectedExportSessions)
+                            } label: {
+                                exportButtonLabel("生成 Garmin TCX", icon: "location.north.line")
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(viewModel.selectedExportSessions.isEmpty)
+                            .opacity(viewModel.selectedExportSessions.isEmpty ? 0.5 : 1)
+                        }
+
+                        Text(viewModel.exportState.message)
+                            .font(AppTypography.footnote)
+                            .foregroundStyle(exportMessageColor)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .padding(20)
+            .background(AppBackground())
+            .navigationTitle("选择导出训练")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("关闭") { showsExportSheet = false }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(viewModel.selectedExportSessions.count == viewModel.exportableSessions.count ? "清空" : "全选") {
+                        if viewModel.selectedExportSessions.count == viewModel.exportableSessions.count {
+                            viewModel.clearExportSelection()
+                        } else {
+                            viewModel.selectAllExportableSessions()
+                        }
+                    }
+                    .disabled(viewModel.exportableSessions.isEmpty)
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private func exportSelectionRow(_ session: TrainingSession) -> some View {
+        Button {
+            viewModel.toggleExportSelection(session)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: viewModel.selectedExportIDs.contains(session.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(viewModel.selectedExportIDs.contains(session.id) ? AppColor.accent : AppColor.textTertiary)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(session.name)
+                        .font(AppTypography.headline)
+                        .foregroundStyle(AppColor.textPrimary)
+                        .lineLimit(1)
+                    Text("\(dayText(session.date)) · \(session.planDistanceKm) · \(session.durationFormatted)")
+                        .font(AppTypography.footnote)
+                        .foregroundStyle(AppColor.textSecondary)
+                }
+
+                Spacer()
+            }
+            .padding(14)
+            .background(AppColor.contentBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
     }
 
     private var weekRangeText: String {

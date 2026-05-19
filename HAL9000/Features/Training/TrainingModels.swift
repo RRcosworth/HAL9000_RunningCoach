@@ -82,11 +82,68 @@ struct TrainingSession: Identifiable, Codable {
         )
     }
 
+    var isRunningWorkout: Bool {
+        let value = type.lowercased()
+        return value.contains("run") || typeIcon == "figure.run"
+    }
+
+    var exportDistanceMeters: Double {
+        plannedDistance ?? distance
+    }
+
+    var exportDurationSeconds: Int {
+        plannedDuration ?? duration
+    }
+
+    var exportTitle: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "HAL9000 跑步训练" : trimmed
+    }
+
+    var exportDate: Date {
+        Self.dateFormatter.date(from: date) ?? Date()
+    }
+
+    var zoneNumber: Int? {
+        guard let zone else { return nil }
+        let digits = zone.compactMap { $0.wholeNumberValue }
+        guard let first = digits.first else { return nil }
+        return min(max(first, 1), 5)
+    }
+
+    var garminIntensity: String {
+        switch zoneNumber ?? 2 {
+        case 1, 2:
+            return "Active"
+        case 3:
+            return "Active"
+        default:
+            return "Resting"
+        }
+    }
+
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+}
+
+struct TrainingWeekDay: Identifiable, Codable {
+    let id: String
+    let date: Date
+    let weekday: String
+    let title: String
+    let session: TrainingSession?
+    let recoveryAdvice: String
+
+    var isToday: Bool {
+        Calendar.current.isDateInToday(date)
+    }
+
+    var isRestDay: Bool {
+        session == nil
+    }
 }
 
 // MARK: - Training Progress

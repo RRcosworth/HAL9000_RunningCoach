@@ -4,32 +4,29 @@ import SwiftUI
 @MainActor
 final class TrainingViewModel: ObservableObject {
     @Published var sessions: [TrainingSession] = []
+    @Published var weekDays: [TrainingWeekDay] = []
     @Published var summary: WeeklySummary?
     @Published var progress: TrainingProgress?
     @Published var state: ViewState = .idle
     @Published var exportState: TrainingExportViewState = .idle
     @Published var garminExportURL: URL?
+    @Published var cacheNotice: String?
+    @Published var selectedExportIDs: Set<String> = []
 
     private let api = APIClient.shared
     private let cache = CacheStore.shared
     private let exportService = TrainingExportService()
     private let healthService: HealthKitServing = HealthKitService.shared
+    private let weeklyCacheTTL: TimeInterval = 24 * 60 * 60
 
     // MARK: - Load
 
     func load() async {
         state = .loading
+        cacheNotice = nil
+        let hadCachedData = await loadCachedWeeklyData()
 
         do {
-            // Try cache first if offline
-            if let cached: WeeklyData = await cache.get("weekly_data", as: WeeklyData.self) {
-                sessions = cached.sessions
-                summary = cached.summary
-                progress = cached.progress
-                await mergeCurrentWeekHealthData()
-                if state == .loading { state = .loaded }
-            }
-
             // Fetch fresh data
             await api.updateBaseURL(UserSessionStore.shared.resolvedBaseURL)
 
@@ -48,18 +45,26 @@ final class TrainingViewModel: ObservableObject {
             summary = parsed.summary
             progress = parsed.progress
             await mergeCurrentWeekHealthData()
+            rebuildWeekDays()
+            syncSelectedExportIDs()
+            cacheNotice = nil
 
             // Cache
-            let cacheData = WeeklyData(sessions: sessions, summary: summary, progress: progress)
-            await cache.set(cacheData, for: "weekly_data", ttl: 300)
+            let cacheData = WeeklyData(sessions: sessions, summary: summary, progress: progress, weekDays: weekDays)
+            await cache.set(cacheData, for: "weekly_data", ttl: weeklyCacheTTL)
 
             state = sessions.isEmpty ? .empty : .loaded
 
         } catch {
             // If we have cached data, keep showing it
-            if sessions.isEmpty {
+            if !hadCachedData && sessions.isEmpty {
                 await mergeCurrentWeekHealthData()
+                rebuildWeekDays()
+                syncSelectedExportIDs()
                 state = sessions.isEmpty ? .failed(error.localizedDescription) : .loaded
+            } else if hadCachedData {
+                cacheNotice = "正在显示缓存数据，后台刷新暂时失败。"
+                state = sessions.isEmpty ? .empty : .loaded
             }
         }
     }
@@ -71,27 +76,55 @@ final class TrainingViewModel: ObservableObject {
         await load()
     }
 
-    func exportToAppleWatch() async {
+    func exportToAppleWatch(_ selectedSessions: [TrainingSession]? = nil) async {
         exportState = .exporting("正在同步到 Apple Watch...")
 
         do {
-            let result = try await exportService.scheduleOnAppleWatch(sessions)
+            let result = try await exportService.scheduleOnAppleWatch(selectedSessions ?? sessions)
             exportState = .succeeded(result.message)
         } catch {
             exportState = .failed(error.localizedDescription)
         }
     }
 
-    func prepareGarminExport() {
+    func prepareGarminExport(_ selectedSessions: [TrainingSession]? = nil) {
         exportState = .exporting("正在生成 Garmin TCX...")
 
         do {
-            garminExportURL = try exportService.makeGarminTCXFile(from: sessions)
+            garminExportURL = try exportService.makeGarminTCXFile(from: selectedSessions ?? sessions)
             exportState = .succeeded("已生成 Garmin TCX 文件，可分享到 Garmin Connect。")
         } catch {
             garminExportURL = nil
             exportState = .failed(error.localizedDescription)
         }
+    }
+
+    var exportableSessions: [TrainingSession] {
+        sessions
+            .filter { !$0.isCompleted }
+            .filter { $0.isRunningWorkout }
+            .filter { $0.exportDistanceMeters > 0 || $0.exportDurationSeconds > 0 }
+            .sorted { $0.date < $1.date }
+    }
+
+    var selectedExportSessions: [TrainingSession] {
+        exportableSessions.filter { selectedExportIDs.contains($0.id) }
+    }
+
+    func toggleExportSelection(_ session: TrainingSession) {
+        if selectedExportIDs.contains(session.id) {
+            selectedExportIDs.remove(session.id)
+        } else {
+            selectedExportIDs.insert(session.id)
+        }
+    }
+
+    func selectAllExportableSessions() {
+        selectedExportIDs = Set(exportableSessions.map(\.id))
+    }
+
+    func clearExportSelection() {
+        selectedExportIDs.removeAll()
     }
 
     // MARK: - Parse
@@ -232,6 +265,81 @@ final class TrainingViewModel: ObservableObject {
         }
 
         return "\(phaseText)进度偏慢，先安排低强度有氧，质量课等身体状态稳定后再做。"
+    }
+
+    private func loadCachedWeeklyData() async -> Bool {
+        guard let cached: CachedValue<WeeklyData> = await cache.getIncludingExpired("weekly_data", as: WeeklyData.self) else {
+            return false
+        }
+
+        sessions = cached.value.sessions
+        summary = cached.value.summary
+        progress = cached.value.progress
+        weekDays = cached.value.weekDays
+        await mergeCurrentWeekHealthData()
+        if weekDays.isEmpty { rebuildWeekDays() }
+        syncSelectedExportIDs()
+        cacheNotice = cached.isExpired ? "正在显示缓存数据，数据可能不是最新。" : nil
+        state = sessions.isEmpty ? .empty : .loaded
+        return true
+    }
+
+    private func rebuildWeekDays() {
+        let interval = currentWeekInterval()
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "E"
+
+        weekDays = (0..<7).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset, to: interval.start) ?? interval.start
+            let dateKey = dateString(from: date)
+            let daySessions = sessions
+                .filter { $0.date == dateKey }
+                .sorted { lhs, rhs in
+                    let left = lhs.startedAt ?? self.date(from: lhs.date) ?? .distantPast
+                    let right = rhs.startedAt ?? self.date(from: rhs.date) ?? .distantPast
+                    return left < right
+                }
+            let session = daySessions.first
+
+            return TrainingWeekDay(
+                id: dateKey,
+                date: date,
+                weekday: formatter.string(from: date),
+                title: dateTitle(for: date),
+                session: session,
+                recoveryAdvice: recoveryAdvice(for: date, session: session)
+            )
+        }
+    }
+
+    private func recoveryAdvice(for date: Date, session: TrainingSession?) -> String {
+        if let session {
+            return session.description ?? "按计划完成，结束后补水、拉伸并观察腿部反馈。"
+        }
+
+        if Calendar.current.isDateInToday(date) {
+            return "休息日，散步 20-30 分钟，晚上早点睡。"
+        }
+
+        return "休息日，保持轻量活动，优先恢复。"
+    }
+
+    private func dateTitle(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M/d"
+        return formatter.string(from: date)
+    }
+
+    private func syncSelectedExportIDs() {
+        let exportableIDs = Set(exportableSessions.map(\.id))
+        if selectedExportIDs.isEmpty {
+            selectedExportIDs = exportableIDs
+        } else {
+            selectedExportIDs = selectedExportIDs.intersection(exportableIDs)
+        }
     }
 
     private func mergeCurrentWeekHealthData() async {
@@ -419,6 +527,14 @@ struct WeeklyData: Codable {
     let sessions: [TrainingSession]
     let summary: WeeklySummary?
     let progress: TrainingProgress?
+    let weekDays: [TrainingWeekDay]
+
+    init(sessions: [TrainingSession], summary: WeeklySummary?, progress: TrainingProgress?, weekDays: [TrainingWeekDay] = []) {
+        self.sessions = sessions
+        self.summary = summary
+        self.progress = progress
+        self.weekDays = weekDays
+    }
 }
 
 enum TrainingExportViewState: Equatable {
