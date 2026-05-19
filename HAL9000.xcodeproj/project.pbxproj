@@ -53,6 +53,8 @@
 		B10000000000000000000044 /* CoachPlanSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000042 /* CoachPlanSyncService.swift */; };
 		B10000000000000000000045 /* CoachMarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000043 /* CoachMarkdownRenderer.swift */; };
 		B10000000000000000000046 /* CoachEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000044 /* CoachEndpoint.swift */; };
+		B10000000000000000000047 /* TodayWorkoutListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000045 /* TodayWorkoutListView.swift */; };
+		B10000000000000000000048 /* TodayWorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000046 /* TodayWorkoutDetailView.swift */; };
 		B90000000000000000000001 /* TSBCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* TSBCalculatorTests.swift */; };
 		B90000000000000000000002 /* TrainingLoadCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */; };
 		B90000000000000000000003 /* HeartRateZoneCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */; };
@@ -120,6 +122,8 @@
 		F20000000000000000000042 /* CoachPlanSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachPlanSyncService.swift; sourceTree = "<group>"; };
 		F20000000000000000000043 /* CoachMarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachMarkdownRenderer.swift; sourceTree = "<group>"; };
 		F20000000000000000000044 /* CoachEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachEndpoint.swift; sourceTree = "<group>"; };
+		F20000000000000000000045 /* TodayWorkoutListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWorkoutListView.swift; sourceTree = "<group>"; };
+		F20000000000000000000046 /* TodayWorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWorkoutDetailView.swift; sourceTree = "<group>"; };
 		F20000000000000000000100 /* HAL9000.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HAL9000.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F30000000000000000000001 /* TSBCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBCalculatorTests.swift; sourceTree = "<group>"; };
 		F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingLoadCalculatorTests.swift; sourceTree = "<group>"; };
@@ -224,6 +228,8 @@
 				F20000000000000000000009 /* TodayView.swift */,
 				F20000000000000000000010 /* TodayViewModel.swift */,
 				F20000000000000000000034 /* TSBDetailView.swift */,
+				F20000000000000000000045 /* TodayWorkoutListView.swift */,
+				F20000000000000000000046 /* TodayWorkoutDetailView.swift */,
 			);
 			path = Today;
 			sourceTree = "<group>";
@@ -451,6 +457,8 @@
 				B10000000000000000000008 /* EmptyStateView.swift in Sources */,
 				B10000000000000000000009 /* TodayView.swift in Sources */,
 				B10000000000000000000010 /* TodayViewModel.swift in Sources */,
+				B10000000000000000000047 /* TodayWorkoutListView.swift in Sources */,
+				B10000000000000000000048 /* TodayWorkoutDetailView.swift in Sources */,
 				B10000000000000000000011 /* TrainingView.swift in Sources */,
 				B10000000000000000000012 /* TrainingViewModel.swift in Sources */,
 				B10000000000000000000013 /* TrainingModels.swift in Sources */,

@@ -45,6 +45,9 @@ struct TodayView: View {
                     loadingView
                 }
             }
+            .navigationDestination(for: TodayWorkoutSummary.self) { workout in
+                TodayWorkoutDetailView(workout: workout)
+            }
             .toolbar(.hidden, for: .navigationBar)
             .background {
                 AppBackground()
@@ -182,6 +185,13 @@ private struct TodayHealthDashboard: View {
             }
             .buttonStyle(.plain)
 
+            NavigationLink {
+                TodayWorkoutListView(workouts: snapshot.todayActivity.workouts)
+            } label: {
+                todayActivityCard
+            }
+            .buttonStyle(.plain)
+
             NavigationLink(value: TodayDetailRoute.trainingLoad) {
                 loadCard
             }
@@ -233,7 +243,6 @@ private struct TodayHealthDashboard: View {
                 .buttonStyle(.plain)
             }
 
-            todayActivityCard
             runningMetricsCard
         }
     }
@@ -292,9 +301,18 @@ private struct TodayHealthDashboard: View {
     private var todayActivityCard: some View {
         TodayCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("今日运动")
-                    .font(AppTypography.title3)
-                    .foregroundStyle(AppColor.textPrimary)
+                HStack {
+                    Text("今日运动")
+                        .font(AppTypography.title3)
+                        .foregroundStyle(AppColor.textPrimary)
+                    Spacer()
+                    Text("\(snapshot.todayActivity.workouts.count) 次")
+                        .font(AppTypography.captionBold)
+                        .foregroundStyle(AppColor.accent)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppColor.textTertiary)
+                }
 
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text(String(format: "%.0f", snapshot.todayActivity.exerciseMinutes))

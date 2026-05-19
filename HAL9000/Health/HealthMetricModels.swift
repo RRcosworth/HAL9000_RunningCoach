@@ -114,12 +114,65 @@ struct TodayActivityMetric: Equatable {
     let workouts: [TodayWorkoutSummary]
 }
 
-struct TodayWorkoutSummary: Identifiable, Equatable {
+struct TodayWorkoutSummary: Identifiable, Equatable, Hashable {
     let id: String
     let title: String
     let startedAt: Date
     let durationMinutes: Double
     let distanceKm: Double?
+}
+
+struct WorkoutDetail: Equatable {
+    let id: String
+    let title: String
+    let startedAt: Date
+    let endedAt: Date
+    let duration: TimeInterval
+    let distanceKm: Double?
+    let activeEnergyKcal: Double?
+    let averageHeartRate: Double?
+    let maxHeartRate: Double?
+    let route: [WorkoutRoutePoint]
+    let heartRateSamples: [HeartRateSample]
+    let splits: [WorkoutSplit]
+
+    var durationMinutes: Double {
+        duration / 60
+    }
+
+    var paceText: String {
+        guard let distanceKm, distanceKm > 0 else { return "--" }
+        let secondsPerKm = duration / distanceKm
+        let minutes = Int(secondsPerKm) / 60
+        let seconds = Int(secondsPerKm) % 60
+        return String(format: "%d:%02d /km", minutes, seconds)
+    }
+}
+
+struct WorkoutRoutePoint: Identifiable, Equatable {
+    let id = UUID()
+    let latitude: Double
+    let longitude: Double
+    let date: Date
+
+    static func == (lhs: WorkoutRoutePoint, rhs: WorkoutRoutePoint) -> Bool {
+        lhs.latitude == rhs.latitude &&
+        lhs.longitude == rhs.longitude &&
+        lhs.date == rhs.date
+    }
+}
+
+struct WorkoutSplit: Identifiable, Equatable {
+    let id = UUID()
+    let kilometer: Int
+    let duration: TimeInterval
+    let averageHeartRate: Double?
+
+    static func == (lhs: WorkoutSplit, rhs: WorkoutSplit) -> Bool {
+        lhs.kilometer == rhs.kilometer &&
+        lhs.duration == rhs.duration &&
+        lhs.averageHeartRate == rhs.averageHeartRate
+    }
 }
 
 struct RunningDistanceMetric: Equatable {

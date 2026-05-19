@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 import HealthKit
 
 protocol HealthKitServing {
@@ -17,6 +18,7 @@ protocol HealthKitServing {
     func fetchMonthlyRunningHistory(months: Int) async throws -> [HealthValuePoint]
     func fetchHeartRateSamples(days: Int) async throws -> [HeartRateSample]
     func fetchMaxHeartRate() async throws -> Double
+    func fetchWorkoutDetail(id: String) async throws -> WorkoutDetail
 }
 
 enum HealthKitServiceError: LocalizedError {
@@ -38,15 +40,13 @@ actor HealthKitService: HealthKitServing {
 
     private let healthStore = HKHealthStore()
     private let calendar = Calendar.current
-    private let authorizationRequestVersion = 1
+    private let authorizationRequestVersion = 2
     private let authorizationRequestVersionKey = "healthKitAuthorizationRequestVersion"
 
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitServiceError.unavailable
         }
-
-        guard !hasRequestedAuthorization else { return }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             healthStore.requestAuthorization(toShare: Set<HKSampleType>(), read: readTypes) { success, error in
@@ -67,7 +67,6 @@ actor HealthKitService: HealthKitServing {
 
     func authorizationState() async -> HealthAuthorizationState {
         guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
-        if hasRequestedAuthorization { return .authorized }
         guard let stepType = quantityType(.stepCount) else { return .unavailable }
 
         switch healthStore.authorizationStatus(for: stepType) {
@@ -76,7 +75,7 @@ actor HealthKitService: HealthKitServing {
         case .sharingDenied:
             return .sharingDenied
         case .sharingAuthorized:
-            return .authorized
+            return hasRequestedAuthorization ? .authorized : .notDetermined
         @unknown default:
             return .notDetermined
         }
@@ -336,8 +335,46 @@ actor HealthKitService: HealthKitServing {
         return min(max(observedMax ?? 190, 160), 210)
     }
 
+    func fetchWorkoutDetail(id: String) async throws -> WorkoutDetail {
+        guard let uuid = UUID(uuidString: id),
+              let workout = try await workout(id: uuid)
+        else {
+            throw HealthKitServiceError.missingType("Workout")
+        }
+
+        async let routePoints = workoutRoutePoints(for: workout)
+        async let heartRateSamples = quantitySamples(
+            .heartRate,
+            unit: .count().unitDivided(by: .minute()),
+            from: workout.startDate,
+            to: workout.endDate
+        )
+
+        let samples = try await heartRateSamples
+            .map { HeartRateSample(date: $0.date, value: $0.value) }
+            .sorted { $0.date < $1.date }
+        let points = try await routePoints
+        let averageHeartRate = samples.isEmpty ? nil : samples.map(\.value).reduce(0, +) / Double(samples.count)
+
+        return WorkoutDetail(
+            id: workout.uuid.uuidString,
+            title: workout.workoutActivityType == .running ? "跑步" : "运动",
+            startedAt: workout.startDate,
+            endedAt: workout.endDate,
+            duration: workout.duration,
+            distanceKm: workoutDistanceKm(workout),
+            activeEnergyKcal: workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()),
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: samples.map(\.value).max(),
+            route: points,
+            heartRateSamples: samples,
+            splits: workoutSplits(route: points, heartRateSamples: samples)
+        )
+    }
+
     private var readTypes: Set<HKObjectType> {
         var types: Set<HKObjectType> = [HKObjectType.workoutType()]
+        types.insert(HKSeriesType.workoutRoute())
 
         [
             .stepCount,
@@ -493,6 +530,118 @@ actor HealthKitService: HealthKitServing {
 
             healthStore.execute(query)
         }
+    }
+
+    private func workout(id: UUID) async throws -> HKWorkout? {
+        try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForObject(with: id)
+            let query = HKSampleQuery(sampleType: HKObjectType.workoutType(), predicate: predicate, limit: 1, sortDescriptors: nil) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                continuation.resume(returning: samples?.first as? HKWorkout)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func workoutRoutePoints(for workout: HKWorkout) async throws -> [WorkoutRoutePoint] {
+        let routes = try await workoutRoutes(for: workout)
+        var points: [WorkoutRoutePoint] = []
+
+        for route in routes {
+            let locations = try await locations(for: route)
+            points.append(contentsOf: locations.map {
+                WorkoutRoutePoint(
+                    latitude: $0.coordinate.latitude,
+                    longitude: $0.coordinate.longitude,
+                    date: $0.timestamp
+                )
+            })
+        }
+
+        return points.sorted { $0.date < $1.date }
+    }
+
+    private func workoutRoutes(for workout: HKWorkout) async throws -> [HKWorkoutRoute] {
+        try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForObjects(from: workout)
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+            let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                continuation.resume(returning: samples as? [HKWorkoutRoute] ?? [])
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func locations(for route: HKWorkoutRoute) async throws -> [CLLocation] {
+        try await withCheckedThrowingContinuation { continuation in
+            var allLocations: [CLLocation] = []
+            let query = HKWorkoutRouteQuery(route: route) { _, locations, done, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                allLocations.append(contentsOf: locations ?? [])
+
+                if done {
+                    continuation.resume(returning: allLocations)
+                }
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func workoutSplits(route: [WorkoutRoutePoint], heartRateSamples: [HeartRateSample]) -> [WorkoutSplit] {
+        guard route.count >= 2 else { return [] }
+
+        var splits: [WorkoutSplit] = []
+        var cumulativeDistance = 0.0
+        var nextBoundary = 1.0
+        var splitStartDate = route[0].date
+
+        for index in 1..<route.count {
+            let previous = route[index - 1]
+            let current = route[index]
+            let previousLocation = CLLocation(latitude: previous.latitude, longitude: previous.longitude)
+            let currentLocation = CLLocation(latitude: current.latitude, longitude: current.longitude)
+            let segmentKm = currentLocation.distance(from: previousLocation) / 1000
+            guard segmentKm > 0 else { continue }
+
+            let segmentStartDistance = cumulativeDistance
+            cumulativeDistance += segmentKm
+
+            while cumulativeDistance >= nextBoundary {
+                let ratio = min(max((nextBoundary - segmentStartDistance) / segmentKm, 0), 1)
+                let boundaryDate = previous.date.addingTimeInterval(current.date.timeIntervalSince(previous.date) * ratio)
+                let splitSamples = heartRateSamples.filter { $0.date >= splitStartDate && $0.date <= boundaryDate }
+                let averageHeartRate = splitSamples.isEmpty ? nil : splitSamples.map(\.value).reduce(0, +) / Double(splitSamples.count)
+
+                splits.append(
+                    WorkoutSplit(
+                        kilometer: Int(nextBoundary),
+                        duration: boundaryDate.timeIntervalSince(splitStartDate),
+                        averageHeartRate: averageHeartRate
+                    )
+                )
+
+                splitStartDate = boundaryDate
+                nextBoundary += 1
+            }
+        }
+
+        return splits
     }
 
     private func runningDistance(from start: Date, to end: Date) async throws -> Double {
