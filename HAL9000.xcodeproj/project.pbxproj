@@ -45,6 +45,7 @@
 		B10000000000000000000036 /* RaceLogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003A /* RaceLogViewModel.swift */; };
 		B10000000000000000000037 /* IntervalsICUService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003B /* IntervalsICUService.swift */; };
 		B10000000000000000000038 /* RaceLogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003C /* RaceLogModels.swift */; };
+		B10000000000000000000039 /* RaceMapLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000003D /* RaceMapLocationProvider.swift */; };
 		B90000000000000000000001 /* TSBCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* TSBCalculatorTests.swift */; };
 		B90000000000000000000002 /* TrainingLoadCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */; };
 		B90000000000000000000003 /* HeartRateZoneCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000003 /* HeartRateZoneCalculatorTests.swift */; };
@@ -103,6 +104,7 @@
 		F2000000000000000000003A /* RaceLogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceLogViewModel.swift; sourceTree = "<group>"; };
 		F2000000000000000000003B /* IntervalsICUService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsICUService.swift; sourceTree = "<group>"; };
 		F2000000000000000000003C /* RaceLogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceLogModels.swift; sourceTree = "<group>"; };
+		F2000000000000000000003D /* RaceMapLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceMapLocationProvider.swift; sourceTree = "<group>"; };
 		F20000000000000000000100 /* HAL9000.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HAL9000.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F30000000000000000000001 /* TSBCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TSBCalculatorTests.swift; sourceTree = "<group>"; };
 		F30000000000000000000002 /* TrainingLoadCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingLoadCalculatorTests.swift; sourceTree = "<group>"; };
@@ -236,6 +238,7 @@
 				F2000000000000000000003B /* IntervalsICUService.swift */,
 				F2000000000000000000003C /* RaceLogModels.swift */,
 				F20000000000000000000039 /* RaceMapView.swift */,
+				F2000000000000000000003D /* RaceMapLocationProvider.swift */,
 			);
 			path = RaceLog;
 			sourceTree = "<group>";
@@ -425,6 +428,7 @@
 				B10000000000000000000037 /* IntervalsICUService.swift in Sources */,
 				B10000000000000000000038 /* RaceLogModels.swift in Sources */,
 				B10000000000000000000035 /* RaceMapView.swift in Sources */,
+				B10000000000000000000039 /* RaceMapLocationProvider.swift in Sources */,
 				B10000000000000000000016 /* ProfileView.swift in Sources */,
 				B10000000000000000000017 /* APIClient.swift in Sources */,
 				B10000000000000000000018 /* Endpoint.swift in Sources */,

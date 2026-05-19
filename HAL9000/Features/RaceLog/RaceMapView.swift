@@ -3,11 +3,12 @@ import SwiftUI
 
 struct RaceMapView: View {
     let races: [RaceActivity]
+    @StateObject private var locationProvider = RaceMapLocationProvider()
     @State private var position: MapCameraPosition
 
     init(races: [RaceActivity]) {
         self.races = races
-        _position = State(initialValue: .region(Self.region(for: races)))
+        _position = State(initialValue: .region(Self.region(for: races, fallbackCoordinate: nil)))
     }
 
     var body: some View {
@@ -20,17 +21,38 @@ struct RaceMapView: View {
             }
         }
         .mapStyle(.standard(elevation: .realistic))
+        .task {
+            if races.compactMap(\.coordinate).isEmpty {
+                locationProvider.requestLocationIfNeeded()
+            }
+        }
         .onChange(of: races) { _, newValue in
-            position = .region(Self.region(for: newValue))
+            let fallback = locationProvider.coordinate
+            position = .region(Self.region(for: newValue, fallbackCoordinate: fallback))
+            if newValue.compactMap(\.coordinate).isEmpty {
+                locationProvider.requestLocationIfNeeded()
+            }
+        }
+        .onChange(of: locationProvider.updateID) { _, _ in
+            guard races.compactMap(\.coordinate).isEmpty else { return }
+            let coordinate = locationProvider.coordinate
+            position = .region(Self.region(for: races, fallbackCoordinate: coordinate))
         }
     }
 
-    private static func region(for races: [RaceActivity]) -> MKCoordinateRegion {
+    private static func region(for races: [RaceActivity], fallbackCoordinate: CLLocationCoordinate2D?) -> MKCoordinateRegion {
         let coordinates = races.compactMap(\.coordinate)
         guard !coordinates.isEmpty else {
+            if let fallbackCoordinate {
+                return MKCoordinateRegion(
+                    center: fallbackCoordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+                )
+            }
+
             return MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795),
-                span: MKCoordinateSpan(latitudeDelta: 55, longitudeDelta: 65)
+                center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                span: MKCoordinateSpan(latitudeDelta: 140, longitudeDelta: 180)
             )
         }
 

@@ -34,6 +34,8 @@
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>用于读取跑步距离、心率、HRV、体重和运动记录，生成今日训练状态与负荷分析。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>用于在没有比赛坐标时，根据当前位置设置 Race Log 地图默认视角。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
