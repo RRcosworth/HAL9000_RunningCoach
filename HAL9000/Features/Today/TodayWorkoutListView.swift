@@ -14,7 +14,9 @@ struct TodayWorkoutListView: View {
                 } else {
                     VStack(spacing: 12) {
                         ForEach(workouts) { workout in
-                            NavigationLink(value: workout) {
+                            NavigationLink {
+                                TodayWorkoutDetailView(workout: workout)
+                            } label: {
                                 workoutRow(workout)
                             }
                             .buttonStyle(.plain)

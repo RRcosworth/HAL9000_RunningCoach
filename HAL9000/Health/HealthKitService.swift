@@ -75,7 +75,7 @@ actor HealthKitService: HealthKitServing {
         case .sharingDenied:
             return .sharingDenied
         case .sharingAuthorized:
-            return hasRequestedAuthorization ? .authorized : .notDetermined
+            return .authorized
         @unknown default:
             return .notDetermined
         }

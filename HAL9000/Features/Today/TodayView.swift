@@ -45,9 +45,6 @@ struct TodayView: View {
                     loadingView
                 }
             }
-            .navigationDestination(for: TodayWorkoutSummary.self) { workout in
-                TodayWorkoutDetailView(workout: workout)
-            }
             .toolbar(.hidden, for: .navigationBar)
             .background {
                 AppBackground()

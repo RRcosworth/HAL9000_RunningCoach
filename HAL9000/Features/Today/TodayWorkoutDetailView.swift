@@ -1,6 +1,8 @@
 import Charts
 import MapKit
+import PhotosUI
 import SwiftUI
+import UIKit
 
 struct TodayWorkoutDetailView: View {
     let workout: TodayWorkoutSummary
@@ -8,6 +10,7 @@ struct TodayWorkoutDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var state: DetailState = .loading
+    @State private var shareDetail: WorkoutDetail?
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -31,6 +34,9 @@ struct TodayWorkoutDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .background { AppBackground() }
         .task { await load() }
+        .fullScreenCover(item: $shareDetail) { detail in
+            WorkoutShareSheet(detail: detail)
+        }
         .supportsSwipeBack()
     }
 
@@ -58,7 +64,9 @@ struct TodayWorkoutDetailView: View {
             Spacer()
 
             if case .loaded(let detail) = state {
-                ShareLink(item: shareText(for: detail)) {
+                Button {
+                    shareDetail = detail
+                } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(AppColor.accent)
@@ -240,19 +248,6 @@ struct TodayWorkoutDetailView: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    private func shareText(for detail: WorkoutDetail) -> String {
-        [
-            "HAL9000 今日运动",
-            "类型：\(detail.title)",
-            "时间：\(detail.startedAt.formatted(date: .abbreviated, time: .shortened))",
-            "距离：\(detail.distanceKm.map { String(format: "%.2f km", $0) } ?? "--")",
-            "时长：\(durationText(detail.duration))",
-            "配速：\(detail.paceText)",
-            "平均心率：\(detail.averageHeartRate.map { String(format: "%.0f bpm", $0) } ?? "--")",
-            "最高心率：\(detail.maxHeartRate.map { String(format: "%.0f bpm", $0) } ?? "--")"
-        ].joined(separator: "\n")
-    }
-
     private enum DetailState {
         case loading
         case loaded(WorkoutDetail)
@@ -308,6 +303,427 @@ private struct WorkoutRouteMap: View {
         )
         return MKCoordinateRegion(center: center, span: span)
     }
+}
+
+private struct WorkoutShareSheet: View {
+    let detail: WorkoutDetail
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var mode: SharePosterMode = .photo
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var backgroundImage: UIImage?
+    @State private var shareURL: URL?
+    @State private var cityName = "运动地点"
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    poster
+                        .frame(maxWidth: .infinity)
+                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 2))
+
+                    modeControls
+                    backgroundChoices
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 28)
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .task {
+            await resolveCityName()
+            await renderShareImage()
+        }
+        .task(id: selectedPhoto) {
+            await loadSelectedPhoto()
+            await renderShareImage()
+        }
+        .onChange(of: mode) { _, _ in
+            Task { await renderShareImage() }
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .frame(width: 54, height: 54)
+                    .background(.white.opacity(0.92))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text("Share Workout")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.black)
+
+            Spacer()
+
+            HStack(spacing: 0) {
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Image(systemName: "camera")
+                        .font(.system(size: 20, weight: .semibold))
+                        .frame(width: 48, height: 48)
+                }
+
+                if let shareURL {
+                    ShareLink(item: shareURL) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 20, weight: .semibold))
+                            .frame(width: 48, height: 48)
+                    }
+                } else {
+                    Button {
+                        Task { await renderShareImage() }
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 20, weight: .semibold))
+                            .frame(width: 48, height: 48)
+                    }
+                }
+            }
+            .foregroundStyle(.black)
+            .background(.white.opacity(0.92), in: Capsule())
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 28)
+        .padding(.bottom, 14)
+    }
+
+    private var poster: some View {
+        WorkoutSharePoster(
+            detail: detail,
+            mode: mode,
+            backgroundImage: backgroundImage,
+            cityName: cityName
+        )
+    }
+
+    private var modeControls: some View {
+        HStack(spacing: 10) {
+            modeButton(.photo, icon: "photo")
+            modeButton(.map, icon: "map")
+            Spacer()
+        }
+    }
+
+    private func modeButton(_ value: SharePosterMode, icon: String) -> some View {
+        Button {
+            mode = value
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(mode == value ? AppColor.accent : AppColor.textSecondary)
+                .frame(width: 60, height: 60)
+                .background(.white, in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(mode == value ? AppColor.accent : AppColor.divider, lineWidth: mode == value ? 2 : 1)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var backgroundChoices: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                thumbnail {
+                    if let backgroundImage {
+                        Image(uiImage: backgroundImage)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(AppColor.textSecondary)
+                    }
+                }
+            }
+
+            ForEach(SharePosterMode.allCases) { item in
+                Button {
+                    mode = item
+                } label: {
+                    thumbnail {
+                        SharePosterThumbnail(mode: item)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if mode == item {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(AppColor.accent)
+                                .padding(6)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func thumbnail<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .frame(height: 92)
+            .frame(maxWidth: .infinity)
+            .background(.white, in: RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func loadSelectedPhoto() async {
+        guard let selectedPhoto,
+              let data = try? await selectedPhoto.loadTransferable(type: Data.self),
+              let image = UIImage(data: data)
+        else { return }
+
+        backgroundImage = image
+        mode = .photo
+    }
+
+    private func resolveCityName() async {
+        guard let point = detail.route.first else { return }
+        let location = CLLocation(latitude: point.latitude, longitude: point.longitude)
+        guard let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first else { return }
+        cityName = placemark.locality ?? placemark.subAdministrativeArea ?? placemark.administrativeArea ?? cityName
+    }
+
+    @MainActor
+    private func renderShareImage() async {
+        let content = WorkoutSharePoster(
+            detail: detail,
+            mode: mode,
+            backgroundImage: backgroundImage,
+            cityName: cityName
+        )
+        .frame(width: 1080, height: 1440)
+
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 1
+
+        guard let image = renderer.uiImage,
+              let data = image.pngData()
+        else { return }
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("HAL9000-Workout-\(detail.id).png")
+        try? data.write(to: url, options: .atomic)
+        shareURL = url
+    }
+}
+
+private enum SharePosterMode: String, CaseIterable, Identifiable {
+    case photo
+    case map
+
+    var id: String { rawValue }
+}
+
+private struct WorkoutSharePoster: View {
+    let detail: WorkoutDetail
+    let mode: SharePosterMode
+    let backgroundImage: UIImage?
+    let cityName: String
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                background
+                LinearGradient(
+                    colors: [.black.opacity(0.62), .black.opacity(0.08), .black.opacity(0.76)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                VStack(alignment: .leading) {
+                    topMeta
+                    Spacer()
+                    bottomStats(width: geometry.size.width)
+                }
+                .padding(.horizontal, geometry.size.width * 0.055)
+                .padding(.vertical, geometry.size.height * 0.04)
+
+                if !detail.route.isEmpty {
+                    RouteOverlayShape(points: detail.route)
+                        .stroke(.white, style: StrokeStyle(lineWidth: max(geometry.size.width * 0.01, 4), lineCap: .round, lineJoin: .round))
+                        .frame(width: geometry.size.width * 0.28, height: geometry.size.height * 0.27)
+                        .shadow(color: .black.opacity(0.35), radius: 4, x: 0, y: 2)
+                        .position(x: geometry.size.width * 0.77, y: geometry.size.height * 0.66)
+                }
+            }
+            .clipped()
+        }
+        .background(.black)
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        if mode == .photo, let backgroundImage {
+            Image(uiImage: backgroundImage)
+                .resizable()
+                .scaledToFill()
+        } else {
+            ShareMapStyleBackground(points: detail.route)
+        }
+    }
+
+    private var topMeta: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("HAL9000")
+                    .font(.system(size: 42, weight: .bold))
+                Text(detail.startedAt.formatted(date: .abbreviated, time: .omitted))
+                    .font(.system(size: 30, weight: .medium))
+            }
+
+            Spacer()
+
+            Label("Ultra", systemImage: "applewatch")
+                .font(.system(size: 30, weight: .bold))
+        }
+        .foregroundStyle(.white)
+    }
+
+    private func bottomStats(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 28) {
+            Image(systemName: "figure.run")
+                .font(.system(size: 48, weight: .bold))
+            Text(cityName)
+                .font(.system(size: 58, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+
+            HStack(alignment: .bottom) {
+                shareStat("DISTANCE", detail.distanceKm.map { String(format: "%.2f", $0) } ?? "--", "km")
+                Spacer()
+                shareStat("TIME", shareDurationText(detail.duration), "min")
+                Spacer()
+                shareStat("AVG. PACE", paceValue, "/km")
+            }
+            .frame(maxWidth: width * 0.92)
+        }
+        .foregroundStyle(.white)
+    }
+
+    private func shareStat(_ title: String, _ value: String, _ unit: String) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.system(size: 26, weight: .semibold))
+                .opacity(0.88)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(value)
+                    .font(.system(size: 48, weight: .bold))
+                Text(unit)
+                    .font(.system(size: 30, weight: .bold))
+            }
+        }
+    }
+
+    private var paceValue: String {
+        detail.paceText
+            .replacingOccurrences(of: " /km", with: "")
+            .replacingOccurrences(of: ":", with: "'") + "''"
+    }
+}
+
+private struct ShareMapStyleBackground: View {
+    let points: [WorkoutRoutePoint]
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                LinearGradient(colors: [Color(hex: "395A43"), Color(hex: "182A33")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                grid(size: geometry.size)
+                RouteOverlayShape(points: points)
+                    .stroke(Color(hex: "FF5B2E"), style: StrokeStyle(lineWidth: max(geometry.size.width * 0.012, 5), lineCap: .round, lineJoin: .round))
+                    .padding(geometry.size.width * 0.18)
+                    .shadow(color: .white.opacity(0.85), radius: 0, x: 0, y: 0)
+            }
+        }
+    }
+
+    private func grid(size: CGSize) -> some View {
+        Path { path in
+            let step = size.width / 7
+            for index in 0...8 {
+                let x = CGFloat(index) * step
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x + size.width * 0.24, y: size.height))
+            }
+
+            for index in 0...10 {
+                let y = CGFloat(index) * step
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y + size.height * 0.08))
+            }
+        }
+        .stroke(.white.opacity(0.16), lineWidth: 4)
+    }
+}
+
+private struct SharePosterThumbnail: View {
+    let mode: SharePosterMode
+
+    var body: some View {
+        ZStack {
+            if mode == .photo {
+                LinearGradient(colors: [Color(hex: "7A4D2E"), Color(hex: "D39B54")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Image(systemName: "photo")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.8))
+            } else {
+                LinearGradient(colors: [Color(hex: "4E7CA2"), Color(hex: "D7E7D7")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Image(systemName: "map")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+        }
+    }
+}
+
+private struct RouteOverlayShape: Shape {
+    let points: [WorkoutRoutePoint]
+
+    func path(in rect: CGRect) -> Path {
+        guard points.count >= 2 else { return Path() }
+
+        let latitudes = points.map(\.latitude)
+        let longitudes = points.map(\.longitude)
+        guard let minLat = latitudes.min(),
+              let maxLat = latitudes.max(),
+              let minLon = longitudes.min(),
+              let maxLon = longitudes.max()
+        else { return Path() }
+
+        let latSpan = max(maxLat - minLat, 0.000001)
+        let lonSpan = max(maxLon - minLon, 0.000001)
+        let inset = min(rect.width, rect.height) * 0.08
+        let drawRect = rect.insetBy(dx: inset, dy: inset)
+
+        func point(for routePoint: WorkoutRoutePoint) -> CGPoint {
+            let x = drawRect.minX + CGFloat((routePoint.longitude - minLon) / lonSpan) * drawRect.width
+            let y = drawRect.maxY - CGFloat((routePoint.latitude - minLat) / latSpan) * drawRect.height
+            return CGPoint(x: x, y: y)
+        }
+
+        var path = Path()
+        path.move(to: point(for: points[0]))
+        for routePoint in points.dropFirst() {
+            path.addLine(to: point(for: routePoint))
+        }
+        return path
+    }
+}
+
+private func shareDurationText(_ duration: TimeInterval) -> String {
+    let minutes = max(Int((duration / 60).rounded()), 0)
+    return "\(minutes)"
 }
 
 private struct WorkoutChartOrEmpty<Content: View, Data>: View {

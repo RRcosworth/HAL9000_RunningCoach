@@ -122,7 +122,7 @@ struct TodayWorkoutSummary: Identifiable, Equatable, Hashable {
     let distanceKm: Double?
 }
 
-struct WorkoutDetail: Equatable {
+struct WorkoutDetail: Identifiable, Equatable {
     let id: String
     let title: String
     let startedAt: Date
