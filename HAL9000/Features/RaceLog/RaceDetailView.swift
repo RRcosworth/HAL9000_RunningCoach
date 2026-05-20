@@ -53,7 +53,7 @@ struct RaceDetailView: View {
                 }
 
                 ZStack {
-                    RouteMapView(coordinates: viewModel.coordinates)
+                    RouteMapView(coordinates: viewModel.coordinates, fallbackCoordinate: viewModel.race.coordinate)
                         .frame(height: 240)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
 

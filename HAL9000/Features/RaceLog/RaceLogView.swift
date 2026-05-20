@@ -291,14 +291,7 @@ struct RaceLogView: View {
                         }
                     }
 
-                    HStack(spacing: 8) {
-                        infoChip(race.distanceText, icon: "ruler")
-                        infoChip(race.durationText, icon: "stopwatch")
-                        infoChip(race.paceText, icon: "speedometer")
-                        if race.category != .other {
-                            infoChip(race.category.displayName, icon: "flag.checkered")
-                        }
-                    }
+                    raceMetricStrip(race)
 
                     if let location = race.locationText {
                         Label(location, systemImage: "location")
@@ -319,6 +312,31 @@ struct RaceLogView: View {
                     .padding(.top, 13)
             }
         }
+    }
+
+    private func raceMetricStrip(_ race: RaceActivity) -> some View {
+        HStack(spacing: 10) {
+            compactMetric(race.distanceText, icon: "ruler")
+            compactMetric(race.durationText, icon: "stopwatch")
+            compactMetric(race.paceText, icon: "speedometer")
+            if race.category != .other {
+                compactMetric(race.category.displayName, icon: "flag.checkered")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func compactMetric(_ text: String, icon: String) -> some View {
+        Label {
+            Text(text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        } icon: {
+            Image(systemName: icon)
+        }
+        .font(.system(size: 13, weight: .semibold, design: .rounded))
+        .foregroundStyle(AppColor.textSecondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func metricCard(_ title: String, _ value: String, _ subtitle: String, _ icon: String, _ tint: Color) -> some View {

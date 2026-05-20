@@ -102,8 +102,8 @@ struct RaceActivity: Identifiable, Equatable {
         category = RaceCategory.classify(distanceMeters: raw.distance ?? 0)
         averageHeartRate = raw.averageHeartrate.map { Int($0.rounded()) }
         maxHeartRate = raw.maxHeartrate.map { Int($0.rounded()) }
-        totalElevationGain = raw.totalElevationGain
-        averageCadence = raw.averageCadence
+        totalElevationGain = Self.normalizedElevationGain(raw.totalElevationGain)
+        averageCadence = Self.normalizedRunningCadence(raw.averageCadence)
         calories = raw.calories.map { Int($0.rounded()) }
     }
 
@@ -167,10 +167,38 @@ struct RaceActivity: Identifiable, Equatable {
             category: category,
             averageHeartRate: detail.averageHeartrate.map { Int($0.rounded()) } ?? averageHeartRate,
             maxHeartRate: detail.maxHeartrate.map { Int($0.rounded()) } ?? maxHeartRate,
-            totalElevationGain: detail.totalElevationGain ?? totalElevationGain,
-            averageCadence: detail.averageCadence ?? averageCadence,
+            totalElevationGain: Self.normalizedElevationGain(detail.totalElevationGain) ?? totalElevationGain,
+            averageCadence: Self.normalizedRunningCadence(detail.averageCadence) ?? averageCadence,
             calories: detail.calories.map { Int($0.rounded()) } ?? calories
         )
+    }
+
+    func withRouteElevationGain(_ elevationGain: Double?) -> RaceActivity {
+        RaceActivity(
+            id: id,
+            name: name,
+            startDate: startDate,
+            distanceMeters: distanceMeters,
+            movingTimeSeconds: movingTimeSeconds,
+            coordinate: coordinate,
+            locationText: locationText,
+            category: category,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            totalElevationGain: Self.normalizedElevationGain(elevationGain) ?? totalElevationGain,
+            averageCadence: averageCadence,
+            calories: calories
+        )
+    }
+
+    private static func normalizedRunningCadence(_ value: Double?) -> Double? {
+        guard let value, value > 0 else { return nil }
+        return value < 120 ? value * 2 : value
+    }
+
+    private static func normalizedElevationGain(_ value: Double?) -> Double? {
+        guard let value, value > 0 else { return nil }
+        return value > 500 ? value * 0.3048 : value
     }
 
     static func == (lhs: RaceActivity, rhs: RaceActivity) -> Bool {
@@ -365,42 +393,79 @@ struct IntervalsActivity: Decodable {
 struct IntervalsStream: Decodable {
     let type: String
     let data: [Double]
+    let data2: [Double]?
+
+    init(type: String, data: [Double], data2: [Double]? = nil) {
+        self.type = type
+        self.data = data
+        self.data2 = data2
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case data
+        case data2
+    }
 
     var startCoordinate: CLLocationCoordinate2D? {
-        guard data.count >= 4, data.count.isMultiple(of: 2) else { return nil }
-        let longitudeStartIndex = data.count / 2
-
-        let latitude = data[0]
-        let longitude = data[longitudeStartIndex]
-        guard (-90...90).contains(latitude), (-180...180).contains(longitude) else { return nil }
-        guard !isLikelyLatitudeOnlyStream else { return nil }
-        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        coordinates.first
     }
 
     var coordinates: [CLLocationCoordinate2D] {
-        guard data.count >= 4, data.count.isMultiple(of: 2), !isLikelyLatitudeOnlyStream else { return [] }
+        let pairs = coordinatePairs
+        guard !pairs.isEmpty, !isLikelyLatitudeOnlyStream else { return [] }
 
-        let midpoint = data.count / 2
-        let latitudes = data.prefix(midpoint)
-        let longitudes = data.suffix(midpoint)
-
-        return zip(latitudes, longitudes).compactMap { latitude, longitude in
+        return pairs.compactMap { latitude, longitude in
             guard (-90...90).contains(latitude), (-180...180).contains(longitude) else { return nil }
             return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         }
     }
 
-    private var isLikelyLatitudeOnlyStream: Bool {
+    private var coordinatePairs: [(Double, Double)] {
+        if let data2, data.count == data2.count {
+            return Array(zip(data, data2))
+        }
+
+        guard data.count >= 4, data.count.isMultiple(of: 2) else { return [] }
         let midpoint = data.count / 2
         let latitudes = data.prefix(midpoint)
         let longitudes = data.suffix(midpoint)
+        return Array(zip(latitudes, longitudes))
+    }
+
+    var smoothedElevationGain: Double? {
+        guard type.lowercased() == "altitude", data.count > 2 else { return nil }
+
+        var gain = 0.0
+        var previous = data[0]
+
+        for altitude in data.dropFirst() {
+            let delta = altitude - previous
+            if delta >= 2.0 {
+                gain += delta
+            }
+            previous = altitude
+        }
+
+        return gain > 0 ? gain : nil
+    }
+
+    private var isLikelyLatitudeOnlyStream: Bool {
+        let pairs = coordinatePairs
+        guard pairs.count > 1 else { return false }
+        let longitudes = pairs.map { $0.1 }
         guard longitudes.allSatisfy({ (-90...90).contains($0) }) else { return false }
 
-        let averageLatitudeLongitudeGap = zip(latitudes, longitudes)
-            .map { abs($0 - $1) }
-            .reduce(0, +) / Double(midpoint)
+        let averageLatitudeLongitudeGap = pairs
+            .map { abs($0.0 - $0.1) }
+            .reduce(0, +) / Double(pairs.count)
         return averageLatitudeLongitudeGap < 1.0
     }
+}
+
+struct RaceRouteStreams {
+    let coordinates: [CLLocationCoordinate2D]
+    let elevationGain: Double?
 }
 
 struct IntervalsActivityDetail: Decodable {

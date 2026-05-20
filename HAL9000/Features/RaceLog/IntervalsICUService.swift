@@ -76,13 +76,13 @@ actor IntervalsICUService {
     }
 
     func fetchStartCoordinate(apiKey: String, activityId: String) async throws -> CLLocationCoordinate2D? {
-        try await fetchRouteStreams(apiKey: apiKey, activityId: activityId).first
+        try await fetchRouteStreams(apiKey: apiKey, activityId: activityId).coordinates.first
     }
 
-    func fetchRouteStreams(apiKey: String, activityId: String) async throws -> [CLLocationCoordinate2D] {
+    func fetchRouteStreams(apiKey: String, activityId: String) async throws -> RaceRouteStreams {
         var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/activity/\(activityId)/streams"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
-            URLQueryItem(name: "types", value: "latlng")
+            URLQueryItem(name: "types", value: "latlng,altitude")
         ]
 
         guard let url = components?.url else { throw IntervalsICUError.invalidURL }
@@ -93,7 +93,10 @@ actor IntervalsICUService {
         try validate(response)
 
         let streams = try JSONDecoder().decode([IntervalsStream].self, from: data)
-        return streams.first(where: { $0.type == "latlng" })?.coordinates ?? []
+        return RaceRouteStreams(
+            coordinates: streams.first(where: { $0.type == "latlng" })?.coordinates ?? [],
+            elevationGain: streams.first(where: { $0.type == "altitude" })?.smoothedElevationGain
+        )
     }
 
     private func authorizationHeader(apiKey: String) -> String {

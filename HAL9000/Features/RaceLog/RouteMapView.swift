@@ -3,11 +3,13 @@ import SwiftUI
 
 struct RouteMapView: View {
     let coordinates: [CLLocationCoordinate2D]
+    let fallbackCoordinate: CLLocationCoordinate2D?
     @State private var position: MapCameraPosition
 
-    init(coordinates: [CLLocationCoordinate2D]) {
+    init(coordinates: [CLLocationCoordinate2D], fallbackCoordinate: CLLocationCoordinate2D? = nil) {
         self.coordinates = coordinates
-        _position = State(initialValue: .region(Self.region(for: coordinates)))
+        self.fallbackCoordinate = fallbackCoordinate
+        _position = State(initialValue: .region(Self.region(for: coordinates, fallbackCoordinate: fallbackCoordinate)))
     }
 
     var body: some View {
@@ -25,16 +27,26 @@ struct RouteMapView: View {
                     Marker("Finish", systemImage: "flag.checkered", coordinate: end)
                         .tint(.red)
                 }
+            } else if let fallbackCoordinate {
+                Marker("Race", systemImage: "flag.checkered", coordinate: fallbackCoordinate)
+                    .tint(AppColor.accent)
             }
         }
         .mapControlVisibility(.hidden)
         .onChange(of: coordinates.count) { _, _ in
-            position = .region(Self.region(for: coordinates))
+            position = .region(Self.region(for: coordinates, fallbackCoordinate: fallbackCoordinate))
         }
     }
 
-    private static func region(for coordinates: [CLLocationCoordinate2D]) -> MKCoordinateRegion {
+    private static func region(for coordinates: [CLLocationCoordinate2D], fallbackCoordinate: CLLocationCoordinate2D?) -> MKCoordinateRegion {
         guard let first = coordinates.first else {
+            if let fallbackCoordinate {
+                return MKCoordinateRegion(
+                    center: fallbackCoordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+                )
+            }
+
             return MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795),
                 span: MKCoordinateSpan(latitudeDelta: 50, longitudeDelta: 60)

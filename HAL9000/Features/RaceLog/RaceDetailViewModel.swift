@@ -33,7 +33,7 @@ final class RaceDetailViewModel: ObservableObject {
         async let detailResult: Result<IntervalsActivityDetail, Error> = capture {
             try await service.fetchActivityDetail(apiKey: trimmedApiKey, activityId: race.id)
         }
-        async let routeResult: Result<[CLLocationCoordinate2D], Error> = capture {
+        async let routeResult: Result<RaceRouteStreams, Error> = capture {
             try await service.fetchRouteStreams(apiKey: trimmedApiKey, activityId: race.id)
         }
 
@@ -46,7 +46,8 @@ final class RaceDetailViewModel: ObservableObject {
         }
 
         if case .success(let routeValue) = route {
-            coordinates = routeValue
+            coordinates = routeValue.coordinates
+            race = race.withRouteElevationGain(routeValue.elevationGain)
         }
 
         switch (detail, route) {

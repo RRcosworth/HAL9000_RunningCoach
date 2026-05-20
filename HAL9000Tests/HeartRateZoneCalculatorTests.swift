@@ -56,6 +56,26 @@ final class HeartRateZoneCalculatorTests: XCTestCase {
         XCTAssertNil(latitudeOnly.startCoordinate)
     }
 
+    func testIntervalsStreamDecodesSeparateLatitudeLongitudeArrays() throws {
+        let stream = IntervalsStream(
+            type: "latlng",
+            data: [30.1277, 30.1281],
+            data2: [120.2613, 120.2620]
+        )
+
+        let start = try XCTUnwrap(stream.startCoordinate)
+
+        XCTAssertEqual(stream.coordinates.count, 2)
+        XCTAssertEqual(start.latitude, 30.1277, accuracy: 0.0001)
+        XCTAssertEqual(start.longitude, 120.2613, accuracy: 0.0001)
+    }
+
+    func testIntervalsAltitudeGainIgnoresSmallGpsNoise() {
+        let altitude = IntervalsStream(type: "altitude", data: [10.0, 10.5, 12.0, 11.8, 15.2, 14.9, 18.5])
+
+        XCTAssertEqual(altitude.smoothedElevationGain ?? 0, 7.0, accuracy: 0.1)
+    }
+
     func testIntervalsActivityDecodesLocalDateWithoutTimeZone() throws {
         let json = """
         [
