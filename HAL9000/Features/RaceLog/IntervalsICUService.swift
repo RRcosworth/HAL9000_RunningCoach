@@ -40,6 +40,10 @@ actor IntervalsICUService {
                 "moving_time",
                 "elapsed_time",
                 "average_heartrate",
+                "max_heartrate",
+                "total_elevation_gain",
+                "average_cadence",
+                "calories",
                 "start_latlng",
                 "end_latlng",
                 "latlng",
@@ -61,7 +65,21 @@ actor IntervalsICUService {
         return try JSONDecoder().decode([IntervalsActivity].self, from: data)
     }
 
+    func fetchActivityDetail(apiKey: String, activityId: String) async throws -> IntervalsActivityDetail {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/activity/\(activityId)"))
+        request.setValue(authorizationHeader(apiKey: apiKey), forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response)
+
+        return try JSONDecoder().decode(IntervalsActivityDetail.self, from: data)
+    }
+
     func fetchStartCoordinate(apiKey: String, activityId: String) async throws -> CLLocationCoordinate2D? {
+        try await fetchRouteStreams(apiKey: apiKey, activityId: activityId).first
+    }
+
+    func fetchRouteStreams(apiKey: String, activityId: String) async throws -> [CLLocationCoordinate2D] {
         var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/activity/\(activityId)/streams"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "types", value: "latlng")
@@ -75,7 +93,7 @@ actor IntervalsICUService {
         try validate(response)
 
         let streams = try JSONDecoder().decode([IntervalsStream].self, from: data)
-        return streams.first(where: { $0.type == "latlng" })?.startCoordinate
+        return streams.first(where: { $0.type == "latlng" })?.coordinates ?? []
     }
 
     private func authorizationHeader(apiKey: String) -> String {

@@ -9,40 +9,44 @@ struct RaceLogView: View {
     private let intervalsApiKeyStorageKey = "intervalsApiKey"
 
     var body: some View {
-        ZStack {
-            AppBackground()
+        NavigationStack {
+            ZStack {
+                AppBackground()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    header
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        header
 
-                    switch viewModel.state {
-                    case .idle:
-                        setupContent
-                    case .loading:
-                        loadingContent
-                    case .loaded(let snapshot):
-                        loadedContent(snapshot)
-                    case .failed(let message):
-                        errorContent(message)
+                        switch viewModel.state {
+                        case .idle:
+                            setupContent
+                        case .loading:
+                            loadingContent
+                        case .loaded(let snapshot):
+                            loadedContent(snapshot)
+                        case .failed(let message):
+                            errorContent(message)
+                        }
+
+                        Color.clear.frame(height: 126)
                     }
-
-                    Color.clear.frame(height: 126)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .refreshable {
+                    await loadRaces()
+                }
             }
-            .refreshable {
+            .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showingSettings) {
+                intervalsSettings
+            }
+            .task {
+                loadIntervalsCredentials()
                 await loadRaces()
             }
         }
-        .sheet(isPresented: $showingSettings) {
-            intervalsSettings
-        }
-        .task {
-            loadIntervalsCredentials()
-            await loadRaces()
-        }
+        .supportsSwipeBack()
     }
 
     private var header: some View {
@@ -104,13 +108,22 @@ struct RaceLogView: View {
                     Text("没有识别到比赛")
                         .font(AppTypography.headline)
                         .foregroundStyle(AppColor.textPrimary)
-                    Text("我会从活动名称和标签里识别 race、marathon、5K、10K、半马、全马、比赛等关键词。")
+                    Text("我会从活动名称和标签里识别 race、marathon、5K、10K、半马、全马、比赛等关键词；PB 只计算 10K、半马和全马。")
                         .font(AppTypography.footnote)
                         .foregroundStyle(AppColor.textSecondary)
                 }
             } else {
                 ForEach(snapshot.races) { race in
-                    raceRow(race)
+                    NavigationLink {
+                        RaceDetailView(
+                            race: race,
+                            apiKey: intervalsApiKey,
+                            isPB: snapshot.pbRaceIds.contains(race.id)
+                        )
+                    } label: {
+                        raceRow(race, isPB: snapshot.pbRaceIds.contains(race.id))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -246,7 +259,7 @@ struct RaceLogView: View {
         .supportsSwipeBack()
     }
 
-    private func raceRow(_ race: RaceActivity) -> some View {
+    private func raceRow(_ race: RaceActivity, isPB: Bool) -> some View {
         raceCard {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: race.coordinate == nil ? "flag" : "mappin.and.ellipse")
@@ -263,15 +276,28 @@ struct RaceLogView: View {
                             .foregroundStyle(AppColor.textPrimary)
                             .lineLimit(1)
                         Spacer()
-                        Text(race.dateText)
-                            .font(AppTypography.caption)
-                            .foregroundStyle(AppColor.textSecondary)
+                        if isPB {
+                            Label("PB", systemImage: "trophy.fill")
+                                .font(AppTypography.captionBold)
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.14))
+                                .clipShape(Capsule())
+                        } else {
+                            Text(race.dateText)
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColor.textSecondary)
+                        }
                     }
 
                     HStack(spacing: 8) {
                         infoChip(race.distanceText, icon: "ruler")
                         infoChip(race.durationText, icon: "stopwatch")
                         infoChip(race.paceText, icon: "speedometer")
+                        if race.category != .other {
+                            infoChip(race.category.displayName, icon: "flag.checkered")
+                        }
                     }
 
                     if let location = race.locationText {
@@ -279,7 +305,18 @@ struct RaceLogView: View {
                             .font(AppTypography.caption)
                             .foregroundStyle(AppColor.textSecondary)
                     }
+
+                    if isPB {
+                        Text(race.dateText)
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColor.textSecondary)
+                    }
                 }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppColor.textTertiary)
+                    .padding(.top, 13)
             }
         }
     }

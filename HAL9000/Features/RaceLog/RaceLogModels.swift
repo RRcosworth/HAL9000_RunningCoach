@@ -36,6 +36,44 @@ struct RaceLogSnapshot: Equatable {
 
         return "有些 Intervals.icu 活动没有返回起点坐标，会保留在列表但不显示地图标记。"
     }
+
+    func pbForCategory(_ category: RaceCategory) -> RaceActivity? {
+        races
+            .filter { $0.category == category }
+            .min { lhs, rhs in
+                (lhs.paceSecondsPerKm ?? .greatestFiniteMagnitude) < (rhs.paceSecondsPerKm ?? .greatestFiniteMagnitude)
+            }
+    }
+
+    var pbRaceIds: Set<String> {
+        Set(RaceCategory.pbCategories.compactMap { pbForCategory($0)?.id })
+    }
+}
+
+enum RaceCategory: String, CaseIterable, Equatable {
+    case tenK = "10K"
+    case half = "Half Marathon"
+    case full = "Marathon"
+    case other = "Other"
+
+    static let pbCategories: [RaceCategory] = [.tenK, .half, .full]
+
+    static func classify(distanceMeters: Double) -> RaceCategory {
+        let km = distanceMeters / 1000
+        if (9.50...10.80).contains(km) { return .tenK }
+        if (20.05...22.79).contains(km) { return .half }
+        if (40.09...45.58).contains(km) { return .full }
+        return .other
+    }
+
+    var displayName: String {
+        switch self {
+        case .tenK: return "10K"
+        case .half: return "半马"
+        case .full: return "全马"
+        case .other: return "Other"
+        }
+    }
 }
 
 struct RaceActivity: Identifiable, Equatable {
@@ -46,6 +84,12 @@ struct RaceActivity: Identifiable, Equatable {
     let movingTimeSeconds: Int
     let coordinate: CLLocationCoordinate2D?
     let locationText: String?
+    let category: RaceCategory
+    let averageHeartRate: Int?
+    let maxHeartRate: Int?
+    let totalElevationGain: Double?
+    let averageCadence: Double?
+    let calories: Int?
 
     init(raw: IntervalsActivity) {
         id = raw.id
@@ -55,6 +99,12 @@ struct RaceActivity: Identifiable, Equatable {
         movingTimeSeconds = raw.movingTime ?? raw.elapsedTime ?? 0
         coordinate = raw.coordinate ?? raw.cityCoordinate
         locationText = raw.location
+        category = RaceCategory.classify(distanceMeters: raw.distance ?? 0)
+        averageHeartRate = raw.averageHeartrate.map { Int($0.rounded()) }
+        maxHeartRate = raw.maxHeartrate.map { Int($0.rounded()) }
+        totalElevationGain = raw.totalElevationGain
+        averageCadence = raw.averageCadence
+        calories = raw.calories.map { Int($0.rounded()) }
     }
 
     private init(
@@ -64,7 +114,13 @@ struct RaceActivity: Identifiable, Equatable {
         distanceMeters: Double,
         movingTimeSeconds: Int,
         coordinate: CLLocationCoordinate2D?,
-        locationText: String?
+        locationText: String?,
+        category: RaceCategory,
+        averageHeartRate: Int?,
+        maxHeartRate: Int?,
+        totalElevationGain: Double?,
+        averageCadence: Double?,
+        calories: Int?
     ) {
         self.id = id
         self.name = name
@@ -73,6 +129,12 @@ struct RaceActivity: Identifiable, Equatable {
         self.movingTimeSeconds = movingTimeSeconds
         self.coordinate = coordinate
         self.locationText = locationText
+        self.category = category
+        self.averageHeartRate = averageHeartRate
+        self.maxHeartRate = maxHeartRate
+        self.totalElevationGain = totalElevationGain
+        self.averageCadence = averageCadence
+        self.calories = calories
     }
 
     func withCoordinate(_ coordinate: CLLocationCoordinate2D) -> RaceActivity {
@@ -83,7 +145,31 @@ struct RaceActivity: Identifiable, Equatable {
             distanceMeters: distanceMeters,
             movingTimeSeconds: movingTimeSeconds,
             coordinate: coordinate,
-            locationText: locationText
+            locationText: locationText,
+            category: category,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            totalElevationGain: totalElevationGain,
+            averageCadence: averageCadence,
+            calories: calories
+        )
+    }
+
+    func withDetail(_ detail: IntervalsActivityDetail) -> RaceActivity {
+        RaceActivity(
+            id: id,
+            name: name,
+            startDate: startDate,
+            distanceMeters: distanceMeters,
+            movingTimeSeconds: movingTimeSeconds,
+            coordinate: coordinate,
+            locationText: locationText,
+            category: category,
+            averageHeartRate: detail.averageHeartrate.map { Int($0.rounded()) } ?? averageHeartRate,
+            maxHeartRate: detail.maxHeartrate.map { Int($0.rounded()) } ?? maxHeartRate,
+            totalElevationGain: detail.totalElevationGain ?? totalElevationGain,
+            averageCadence: detail.averageCadence ?? averageCadence,
+            calories: detail.calories.map { Int($0.rounded()) } ?? calories
         )
     }
 
@@ -140,6 +226,11 @@ struct IntervalsActivity: Decodable {
     let category: String?
     let subType: String?
     let race: Bool?
+    let averageHeartrate: Double?
+    let maxHeartrate: Double?
+    let totalElevationGain: Double?
+    let averageCadence: Double?
+    let calories: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -158,6 +249,11 @@ struct IntervalsActivity: Decodable {
         case category
         case subType = "sub_type"
         case race
+        case averageHeartrate = "average_heartrate"
+        case maxHeartrate = "max_heartrate"
+        case totalElevationGain = "total_elevation_gain"
+        case averageCadence = "average_cadence"
+        case calories
     }
 
     init(from decoder: Decoder) throws {
@@ -179,6 +275,11 @@ struct IntervalsActivity: Decodable {
         category = try container.decodeIfPresent(String.self, forKey: .category)
         subType = try container.decodeIfPresent(String.self, forKey: .subType)
         race = try container.decodeIfPresent(Bool.self, forKey: .race)
+        averageHeartrate = try container.decodeFlexibleDoubleIfPresent(forKey: .averageHeartrate)
+        maxHeartrate = try container.decodeFlexibleDoubleIfPresent(forKey: .maxHeartrate)
+        totalElevationGain = try container.decodeFlexibleDoubleIfPresent(forKey: .totalElevationGain)
+        averageCadence = try container.decodeFlexibleDoubleIfPresent(forKey: .averageCadence)
+        calories = try container.decodeFlexibleDoubleIfPresent(forKey: .calories)
     }
 
     var coordinate: CLLocationCoordinate2D? {
@@ -276,6 +377,19 @@ struct IntervalsStream: Decodable {
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
+    var coordinates: [CLLocationCoordinate2D] {
+        guard data.count >= 4, data.count.isMultiple(of: 2), !isLikelyLatitudeOnlyStream else { return [] }
+
+        let midpoint = data.count / 2
+        let latitudes = data.prefix(midpoint)
+        let longitudes = data.suffix(midpoint)
+
+        return zip(latitudes, longitudes).compactMap { latitude, longitude in
+            guard (-90...90).contains(latitude), (-180...180).contains(longitude) else { return nil }
+            return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        }
+    }
+
     private var isLikelyLatitudeOnlyStream: Bool {
         let midpoint = data.count / 2
         let latitudes = data.prefix(midpoint)
@@ -286,6 +400,75 @@ struct IntervalsStream: Decodable {
             .map { abs($0 - $1) }
             .reduce(0, +) / Double(midpoint)
         return averageLatitudeLongitudeGap < 1.0
+    }
+}
+
+struct IntervalsActivityDetail: Decodable {
+    let id: String
+    let averageHeartrate: Double?
+    let maxHeartrate: Double?
+    let totalElevationGain: Double?
+    let averageCadence: Double?
+    let calories: Double?
+    let splits: [IntervalsSplit]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case averageHeartrate = "average_heartrate"
+        case maxHeartrate = "max_heartrate"
+        case totalElevationGain = "total_elevation_gain"
+        case averageCadence = "average_cadence"
+        case calories
+        case splits
+    }
+}
+
+struct IntervalsSplit: Decodable, Identifiable {
+    let id = UUID()
+    let name: String?
+    let distanceMeters: Double?
+    let elapsedTimeSeconds: Int?
+    let movingTimeSeconds: Int?
+    let paceSecondsPerKm: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case distance
+        case elapsedTime = "elapsed_time"
+        case movingTime = "moving_time"
+        case pace
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        distanceMeters = try container.decodeFlexibleDoubleIfPresent(forKey: .distance)
+        elapsedTimeSeconds = try container.decodeIfPresent(Int.self, forKey: .elapsedTime)
+        movingTimeSeconds = try container.decodeIfPresent(Int.self, forKey: .movingTime)
+        paceSecondsPerKm = try container.decodeFlexibleDoubleIfPresent(forKey: .pace)
+    }
+
+    var titleText: String {
+        if let name, !name.isEmpty { return name }
+        if let distanceMeters {
+            return String(format: "%.1f km", distanceMeters / 1000)
+        }
+        return "Split"
+    }
+
+    var durationText: String {
+        let seconds = movingTimeSeconds ?? elapsedTimeSeconds ?? 0
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let remainder = seconds % 60
+        return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, remainder) : String(format: "%d:%02d", minutes, remainder)
+    }
+
+    var paceText: String {
+        guard let paceSecondsPerKm else { return "--" }
+        let minutes = Int(paceSecondsPerKm) / 60
+        let seconds = Int(paceSecondsPerKm) % 60
+        return String(format: "%d:%02d/km", minutes, seconds)
     }
 }
 
