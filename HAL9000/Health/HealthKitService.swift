@@ -19,6 +19,7 @@ protocol HealthKitServing {
     func fetchWeeklyRunningHistory(weeks: Int) async throws -> [HealthValuePoint]
     func fetchMonthlyRunningHistory(months: Int) async throws -> [HealthValuePoint]
     func fetchHeartRateSamples(days: Int) async throws -> [HeartRateSample]
+    func fetchRunningHeartRateSamples(days: Int) async throws -> [HeartRateSample]
     func fetchMaxHeartRate() async throws -> Double
     func fetchRunningWorkoutSummaries(from start: Date, to end: Date) async throws -> [TodayWorkoutSummary]
     func fetchWorkoutDetail(id: String) async throws -> WorkoutDetail
@@ -347,6 +348,25 @@ actor HealthKitService: HealthKitServing {
         return try await quantitySamples(.heartRate, unit: .count().unitDivided(by: .minute()), from: start, to: now)
             .map { HeartRateSample(date: $0.date, value: $0.value) }
             .sorted { $0.date < $1.date }
+    }
+
+    func fetchRunningHeartRateSamples(days: Int) async throws -> [HeartRateSample] {
+        let now = Date()
+        let start = calendar.date(byAdding: .day, value: -days + 1, to: calendar.startOfDay(for: now)) ?? now
+        let workouts = try await runningWorkouts(from: start, to: now)
+        var samples: [HeartRateSample] = []
+
+        for workout in workouts {
+            let workoutSamples = try await quantitySamples(
+                .heartRate,
+                unit: .count().unitDivided(by: .minute()),
+                from: workout.startDate,
+                to: workout.endDate
+            )
+            samples.append(contentsOf: workoutSamples.map { HeartRateSample(date: $0.date, value: $0.value) })
+        }
+
+        return samples.sorted { $0.date < $1.date }
     }
 
     func fetchMaxHeartRate() async throws -> Double {

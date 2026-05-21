@@ -76,6 +76,7 @@ struct AnalysisView: View {
                 analysisMetricCard(title: "停跑", value: snapshot.daysSinceLastRunText, subtitle: "距上次跑步", icon: "figure.run.square.stack", tint: snapshot.consistencyTint)
             }
 
+            intensityCard(snapshot)
             insightSection(snapshot)
         }
     }
@@ -150,6 +151,58 @@ struct AnalysisView: View {
                     .font(AppTypography.caption)
                     .foregroundStyle(AppColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func intensityCard(_ snapshot: AnalysisSnapshot) -> some View {
+        analysisCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("80/20 强度分布")
+                        .font(AppTypography.title3)
+                        .foregroundStyle(AppColor.textPrimary)
+                    Spacer()
+                    Text("42 天")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(AppColor.textSecondary)
+                }
+
+                if let intensity = snapshot.intensity, intensity.hasEnoughData {
+                    HStack(spacing: 10) {
+                        ratioPill("轻松 Z1-Z2", intensity.easyText, AppColor.success)
+                        ratioPill("较难 Z3-Z5", intensity.hardText, AppColor.warning)
+                    }
+
+                    VStack(spacing: 8) {
+                        ForEach(intensity.zones) { zone in
+                            zoneRow(zone)
+                        }
+                    }
+
+                    Text("按跑步 workout 内心率样本计算。知识库口径：大多数训练应落在轻松区，质量课作为少量高刺激。")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(AppColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack(spacing: 12) {
+                        Image(systemName: "heart.text.square")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(AppColor.textTertiary)
+                            .frame(width: 42, height: 42)
+                            .background(AppColor.cardBackground)
+                            .clipShape(Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("等待跑步心率样本")
+                                .font(AppTypography.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            Text("佩戴手表跑步后，这里会显示 Z1-Z5 和 80/20 比例。")
+                                .font(AppTypography.footnote)
+                                .foregroundStyle(AppColor.textSecondary)
+                        }
+                    }
+                }
             }
         }
     }
@@ -283,6 +336,56 @@ struct AnalysisView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
+    private func ratioPill(_ title: String, _ value: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+            Text(title)
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColor.textSecondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColor.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func zoneRow(_ zone: HRZoneBreakdown) -> some View {
+        HStack(spacing: 10) {
+            Text("Z\(zone.zone)")
+                .font(AppTypography.captionBold)
+                .foregroundStyle(zoneColor(zone.zone))
+                .frame(width: 28, alignment: .leading)
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(AppColor.cardBackground)
+                    Capsule()
+                        .fill(zoneColor(zone.zone))
+                        .frame(width: max(4, geometry.size.width * zone.percentage / 100))
+                }
+            }
+            .frame(height: 8)
+
+            Text(String(format: "%.0f%%", zone.percentage))
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColor.textSecondary)
+                .frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    private func zoneColor(_ zone: Int) -> Color {
+        switch zone {
+        case 1: return AppColor.accent
+        case 2: return AppColor.success
+        case 3: return AppColor.warning
+        case 4: return Color.orange
+        default: return AppColor.error
+        }
+    }
+
     private func analysisCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             content()
@@ -342,13 +445,21 @@ final class AnalysisViewModel: ObservableObject {
         state = .loading
 
         do {
-            let days = try await healthService.fetchRunningLoadDays(days: 180)
+            async let daysResult = healthService.fetchRunningLoadDays(days: 180)
+            async let heartRateSamplesResult = healthService.fetchRunningHeartRateSamples(days: 42)
+            async let maxHeartRateResult = healthService.fetchMaxHeartRate()
+
+            let days = try await daysResult
+            let heartRateSamples = try await heartRateSamplesResult
+            let maxHeartRate = try await maxHeartRateResult
             let tsbResult = loadCalculator.calculateTSB(days: days)
             let hasEnoughTSBData = days.filter { $0.runningDistanceKm > 0 || $0.exerciseMinutes > 0 }.count >= 42
             let snapshot = AnalysisSnapshotBuilder(calendar: calendar).build(
                 days: days,
                 tsbResult: tsbResult,
-                hasEnoughTSBData: hasEnoughTSBData
+                hasEnoughTSBData: hasEnoughTSBData,
+                heartRateSamples: heartRateSamples,
+                maxHeartRate: maxHeartRate
             )
             state = .loaded(snapshot)
         } catch {
@@ -376,6 +487,7 @@ struct AnalysisSnapshot: Equatable {
     let fortyTwoDayDistanceKm: Double
     let weeklyVariation: Double?
     let daysSinceLastRun: Int?
+    let intensity: IntensityBalance?
     let insights: [AnalysisInsight]
     let referenceMileageKm: Double
 
@@ -391,6 +503,7 @@ struct AnalysisSnapshot: Equatable {
             fortyTwoDayDistanceKm: fortyTwoDayDistanceKm,
             weeklyVariation: weeklyVariation,
             daysSinceLastRun: daysSinceLastRun,
+            intensity: intensity,
             insights: insights,
             referenceMileageKm: referenceMileageKm
         )
@@ -467,6 +580,30 @@ struct AnalysisSnapshot: Equatable {
     }
 }
 
+struct IntensityBalance: Equatable {
+    let easyPercent: Double
+    let hardPercent: Double
+    let totalSamples: Int
+    let maxHeartRate: Double
+    let zones: [HRZoneBreakdown]
+
+    var easyText: String {
+        String(format: "%.0f%%", easyPercent)
+    }
+
+    var hardText: String {
+        String(format: "%.0f%%", hardPercent)
+    }
+
+    var isAlignedWith8020: Bool {
+        (75...90).contains(easyPercent)
+    }
+
+    var hasEnoughData: Bool {
+        totalSamples >= 20
+    }
+}
+
 struct AnalysisWeekVolume: Identifiable, Equatable {
     let id = UUID()
     let startDate: Date
@@ -487,7 +624,13 @@ struct AnalysisSnapshotBuilder {
     let calendar: Calendar
     private let referenceMileageKm = 40.0
 
-    func build(days: [RunningLoadDay], tsbResult: TSBResult, hasEnoughTSBData: Bool) -> AnalysisSnapshot {
+    func build(
+        days: [RunningLoadDay],
+        tsbResult: TSBResult,
+        hasEnoughTSBData: Bool,
+        heartRateSamples: [HeartRateSample] = [],
+        maxHeartRate: Double = 190
+    ) -> AnalysisSnapshot {
         let sorted = days.sorted { $0.date < $1.date }
         let analysisDays = Array(sorted.suffix(42))
         let weeklyVolumes = buildWeeklyVolumes(days: analysisDays)
@@ -498,6 +641,7 @@ struct AnalysisSnapshotBuilder {
         let daysSinceLastRun = lastRunDate.map { calendar.dateComponents([.day], from: calendar.startOfDay(for: $0), to: calendar.startOfDay(for: Date())).day ?? 0 }
         let tsbState = TSBCalculator().state(for: tsbResult.current.tsb, hasEnoughData: hasEnoughTSBData)
         let loadBalance = loadBalance(for: tsbState)
+        let intensity = buildIntensityBalance(samples: heartRateSamples, maxHeartRate: maxHeartRate)
 
         let snapshot = AnalysisSnapshot(
             generatedAt: Date(),
@@ -520,6 +664,7 @@ struct AnalysisSnapshotBuilder {
             fortyTwoDayDistanceKm: totalDistance,
             weeklyVariation: variation,
             daysSinceLastRun: daysSinceLastRun,
+            intensity: intensity,
             insights: [],
             referenceMileageKm: referenceMileageKm
         )
@@ -563,7 +708,7 @@ struct AnalysisSnapshotBuilder {
             loadInsight(snapshot),
             stabilityInsight(snapshot),
             consistencyInsight(snapshot),
-            intensityInsight()
+            intensityInsight(snapshot)
         ]
     }
 
@@ -650,12 +795,74 @@ struct AnalysisSnapshotBuilder {
         )
     }
 
-    private func intensityInsight() -> AnalysisInsight {
-        AnalysisInsight(
-            title: "80/20：等待心率分区",
-            message: "知识库建议大约 80% 轻松、20% 较难。当前首版只读取跑步距离和运动时间；接入心率分区后会显示低强度与硬课比例。",
+    private func intensityInsight(_ snapshot: AnalysisSnapshot) -> AnalysisInsight {
+        guard let intensity = snapshot.intensity, intensity.hasEnoughData else {
+            return AnalysisInsight(
+                title: "80/20：等待跑步心率",
+                message: "知识库建议大约 80% 轻松、20% 较难。当前没有足够的跑步 workout 心率样本；佩戴手表完成几次跑步后会显示真实比例。",
+                icon: "slider.horizontal.3",
+                tint: AppColor.textTertiary
+            )
+        }
+
+        if intensity.isAlignedWith8020 {
+            return AnalysisInsight(
+                title: "80/20：强度分配合理",
+                message: "最近 42 天跑步心率显示低强度 \(intensity.easyText)，较高强度 \(intensity.hardText)。这接近知识库建议的 80/20：多数跑轻松，少数训练拉开强度。",
+                icon: "checkmark.seal",
+                tint: AppColor.success
+            )
+        }
+
+        if intensity.easyPercent < 75 {
+            return AnalysisInsight(
+                title: "80/20：轻松跑比例偏低",
+                message: "最近 42 天低强度只有 \(intensity.easyText)，较高强度 \(intensity.hardText)。知识库提醒：中高强度堆太多会挤压恢复，建议把更多普通跑压回 Z1-Z2。",
+                icon: "slider.horizontal.3",
+                tint: AppColor.warning
+            )
+        }
+
+        return AnalysisInsight(
+            title: "80/20：轻松跑占比很高",
+            message: "最近 42 天低强度达到 \(intensity.easyText)，较高强度 \(intensity.hardText)。这对恢复和基础期友好；若 TSB 稳定且身体状态好，可以保留少量节奏跑或间歇刺激。",
             icon: "slider.horizontal.3",
             tint: AppColor.accent
+        )
+    }
+
+    private func buildIntensityBalance(samples: [HeartRateSample], maxHeartRate: Double) -> IntensityBalance? {
+        guard !samples.isEmpty, maxHeartRate > 0 else { return nil }
+
+        let calculator = HeartRateZoneCalculator()
+        var counts = [1: 0, 2: 0, 3: 0, 4: 0, 5: 0]
+
+        for sample in samples {
+            let zone = calculator.classify(heartRate: sample.value, maxHR: maxHeartRate)
+            counts[zone, default: 0] += 1
+        }
+
+        let total = counts.values.reduce(0, +)
+        guard total > 0 else { return nil }
+
+        let zones = (1...5).map { zone in
+            let count = counts[zone, default: 0]
+            return HRZoneBreakdown(
+                zone: zone,
+                name: calculator.zoneName(zone),
+                rangeText: calculator.zoneRange(zone: zone, maxHR: maxHeartRate),
+                minutes: Double(count),
+                percentage: Double(count) / Double(total) * 100
+            )
+        }
+
+        let easyPercent = Double((counts[1, default: 0] + counts[2, default: 0])) / Double(total) * 100
+        return IntensityBalance(
+            easyPercent: easyPercent,
+            hardPercent: 100 - easyPercent,
+            totalSamples: total,
+            maxHeartRate: maxHeartRate,
+            zones: zones
         )
     }
 
