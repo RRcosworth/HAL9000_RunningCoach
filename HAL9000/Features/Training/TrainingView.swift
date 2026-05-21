@@ -10,25 +10,29 @@ struct TrainingView: View {
             ZStack {
                 AppBackground()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        header
+                GeometryReader { geometry in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            header
 
-                        switch viewModel.state {
-                        case .idle, .loading:
-                            skeletonContent
-                        case .loaded:
-                            loadedContent
-                        case .empty:
-                            emptyContent
-                        case .failed(let message):
-                            errorContent(message)
+                            switch viewModel.state {
+                            case .idle, .loading:
+                                skeletonContent
+                            case .loaded:
+                                loadedContent
+                            case .empty:
+                                emptyContent
+                            case .failed(let message):
+                                errorContent(message)
+                            }
+
+                            Color.clear.frame(height: 126)
                         }
-
-                        Color.clear.frame(height: 126)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 18)
+                        .frame(width: geometry.size.width, alignment: .topLeading)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 18)
+                    .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                 }
                 .refreshable {
                     await viewModel.refresh()
@@ -88,6 +92,7 @@ struct TrainingView: View {
             weekPlanSection
             historySection
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: $showsExportSheet) {
             exportSheet
         }
@@ -250,6 +255,7 @@ struct TrainingView: View {
                             infoChip(zone, icon: "waveform.path.ecg")
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -304,8 +310,10 @@ struct TrainingView: View {
                                 weekSessionRow(session)
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -344,7 +352,9 @@ struct TrainingView: View {
                     infoChip(zone, icon: "waveform.path.ecg")
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(AppColor.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -376,7 +386,10 @@ struct TrainingView: View {
                     }
                     .font(AppTypography.footnote)
                     .foregroundStyle(AppColor.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 if showsChevron {
                     Image(systemName: "chevron.right")
@@ -496,6 +509,8 @@ struct TrainingView: View {
         Label(text, systemImage: icon)
             .font(AppTypography.caption)
             .foregroundStyle(AppColor.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .padding(.horizontal, 9)
             .padding(.vertical, 6)
             .background(AppColor.cardBackground)
