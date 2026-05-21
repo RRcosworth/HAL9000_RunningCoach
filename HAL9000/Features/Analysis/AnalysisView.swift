@@ -405,6 +405,7 @@ final class AnalysisViewModel: ObservableObject {
     private let healthService: HealthKitServing
     private let loadCalculator: TrainingLoadCalculator
     private let calendar: Calendar
+    private var loadGeneration = UUID()
 
     init(
         healthService: HealthKitServing = HealthKitService.shared,
@@ -417,6 +418,8 @@ final class AnalysisViewModel: ObservableObject {
     }
 
     func load() async {
+        let generation = UUID()
+        loadGeneration = generation
         state = .loading
 
         let authorization = await healthService.authorizationState()
@@ -425,7 +428,7 @@ final class AnalysisViewModel: ObservableObject {
             return
         }
 
-        await fetchAnalysis()
+        await fetchAnalysis(generation: generation)
     }
 
     func refresh() async {
@@ -435,34 +438,43 @@ final class AnalysisViewModel: ObservableObject {
     func requestAuthorization() async {
         do {
             try await healthService.requestAuthorization()
-            await fetchAnalysis()
+            let generation = UUID()
+            loadGeneration = generation
+            await fetchAnalysis(generation: generation)
         } catch {
             state = .failed(error.localizedDescription)
         }
     }
 
-    private func fetchAnalysis() async {
+    private func fetchAnalysis(generation: UUID) async {
         state = .loading
 
         do {
-            async let daysResult = healthService.fetchRunningLoadDays(days: 180)
-            async let heartRateSamplesResult = fetchOptionalRunningHeartRateSamples()
-            async let maxHeartRateResult = fetchOptionalMaxHeartRate()
-
-            let days = try await daysResult
-            let heartRateSamples = await heartRateSamplesResult
-            let maxHeartRate = await maxHeartRateResult
+            let days = try await healthService.fetchRunningLoadDays(days: 180)
             let tsbResult = loadCalculator.calculateTSB(days: days)
             let hasEnoughTSBData = days.filter { $0.runningDistanceKm > 0 || $0.exerciseMinutes > 0 }.count >= 42
-            let snapshot = AnalysisSnapshotBuilder(calendar: calendar).build(
+            let builder = AnalysisSnapshotBuilder(calendar: calendar)
+            let snapshot = builder.build(
+                days: days,
+                tsbResult: tsbResult,
+                hasEnoughTSBData: hasEnoughTSBData
+            )
+            state = .loaded(snapshot)
+
+            let heartRateSamples = await fetchOptionalRunningHeartRateSamples()
+            guard loadGeneration == generation, !heartRateSamples.isEmpty else { return }
+
+            let maxHeartRate = await fetchOptionalMaxHeartRate()
+            let enrichedSnapshot = builder.build(
                 days: days,
                 tsbResult: tsbResult,
                 hasEnoughTSBData: hasEnoughTSBData,
                 heartRateSamples: heartRateSamples,
                 maxHeartRate: maxHeartRate
             )
-            state = .loaded(snapshot)
+            state = .loaded(enrichedSnapshot)
         } catch {
+            guard loadGeneration == generation else { return }
             state = .failed(error.localizedDescription)
         }
     }

@@ -224,8 +224,11 @@ actor HealthKitService: HealthKitServing {
     func fetchRunningLoadDays(days: Int) async throws -> [RunningLoadDay] {
         let now = Date()
         let start = calendar.date(byAdding: .day, value: -days + 1, to: calendar.startOfDay(for: now)) ?? now
-        let workouts = try await runningWorkouts(from: start, to: now)
-        let restingHeartRate = try await latestQuantity(.restingHeartRate, unit: .count().unitDivided(by: .minute()), from: start, to: now)?.value
+        async let workoutsResult = runningWorkouts(from: start, to: now)
+        async let restingHeartRateResult = optionalRestingHeartRate(from: start, to: now)
+
+        let workouts = try await workoutsResult
+        let restingHeartRate = await restingHeartRateResult
 
         var buckets: [Date: RunningLoadDay] = [:]
 
@@ -261,6 +264,14 @@ actor HealthKitService: HealthKitServing {
         }
 
         return buckets.values.sorted { $0.date > $1.date }
+    }
+
+    private func optionalRestingHeartRate(from start: Date, to end: Date) async -> Double? {
+        do {
+            return try await latestQuantity(.restingHeartRate, unit: .count().unitDivided(by: .minute()), from: start, to: end)?.value
+        } catch {
+            return nil
+        }
     }
 
     func fetchHRVHistory(days: Int) async throws -> [HealthValuePoint] {
