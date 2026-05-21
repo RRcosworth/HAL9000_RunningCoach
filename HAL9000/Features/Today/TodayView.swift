@@ -39,11 +39,7 @@ struct TodayView: View {
                 .padding(.top, 58)
             }
             .navigationDestination(for: TodayDetailRoute.self) { route in
-                if let snapshot = viewModel.snapshot {
-                    TodayMetricDetailView(route: route, snapshot: snapshot)
-                } else {
-                    loadingView
-                }
+                TodayMetricDetailContainer(route: route, viewModel: viewModel)
             }
             .toolbar(.hidden, for: .navigationBar)
             .background {
@@ -130,6 +126,27 @@ struct TodayView: View {
                 .padding(.top, 4)
             }
             .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+private struct TodayMetricDetailContainer: View {
+    let route: TodayDetailRoute
+    @ObservedObject var viewModel: TodayViewModel
+
+    var body: some View {
+        if let snapshot = viewModel.snapshot {
+            TodayMetricDetailView(route: route, snapshot: snapshot)
+        } else {
+            VStack(spacing: 14) {
+                ProgressView()
+                    .tint(AppColor.accent)
+                Text("正在读取 Apple 健康")
+                    .font(AppTypography.subheadline)
+                    .foregroundStyle(AppColor.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { AppBackground() }
         }
     }
 }

@@ -96,6 +96,7 @@ final class TodayViewModel: ObservableObject {
         let load = loadCalculator.calculate(days: loadDays)
         let loadHistoryDays = await loadHistoryDaysResult.value ?? loadDays
         let loadHistory = loadCalculator.calculateHistory(days: loadHistoryDays, displayDays: 90)
+        let tsbData = buildTSBData(days: loadHistoryDays)
 
         let generatedAt = Date()
 
@@ -115,7 +116,7 @@ final class TodayViewModel: ObservableObject {
             bodyMassHistory: await bodyMassHistoryResult.value ?? [],
             weeklyRunningHistory: await weeklyRunningHistoryResult.value ?? [],
             monthlyRunningHistory: await monthlyRunningHistoryResult.value ?? [],
-            tsbData: snapshot?.tsbData,
+            tsbData: tsbData ?? snapshot?.tsbData,
             loadFocus: snapshot?.loadFocus,
             heartRateDistribution: snapshot?.heartRateDistribution
         )
@@ -143,7 +144,6 @@ final class TodayViewModel: ObservableObject {
     }
 
     private func loadSupplementalHealthData(for generatedAt: Date) async {
-        async let tsbResult = result { [self] in try await self.loadTSBData() }
         async let heartRateSamplesResult = result { [self] in try await self.healthService.fetchHeartRateSamples(days: 28) }
         async let maxHeartRateResult = result { [self] in try await self.healthService.fetchMaxHeartRate() }
 
@@ -178,14 +178,15 @@ final class TodayViewModel: ObservableObject {
             bodyMassHistory: latestSnapshot.bodyMassHistory,
             weeklyRunningHistory: latestSnapshot.weeklyRunningHistory,
             monthlyRunningHistory: latestSnapshot.monthlyRunningHistory,
-            tsbData: await tsbResult.value,
+            tsbData: latestSnapshot.tsbData,
             loadFocus: focus,
             heartRateDistribution: distribution
         )
     }
 
-    private func loadTSBData() async throws -> TSBDisplayData {
-        let days = try await healthService.fetchRunningLoadDays(days: 180)
+    private func buildTSBData(days: [RunningLoadDay]) -> TSBDisplayData? {
+        guard days.isEmpty == false else { return nil }
+
         let tsbResult = loadCalculator.calculateTSB(days: days)
         let hasEnoughData = days.filter { $0.runningDistanceKm > 0 || $0.exerciseMinutes > 0 }.count >= 42
         let state = TSBCalculator().state(for: tsbResult.current.tsb, hasEnoughData: hasEnoughData)
