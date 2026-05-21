@@ -62,11 +62,13 @@ final class TodayViewModel: ObservableObject {
         async let weeklyResult = result { [self] in try await self.healthService.fetchWeeklyRunningDistance() }
         async let monthlyResult = result { [self] in try await self.healthService.fetchMonthlyRunningDistance() }
         async let hrvResult = result { [self] in try await self.healthService.fetchHRVMetric() }
+        async let sleepResult = result { [self] in try await self.healthService.fetchSleepMetric() }
         async let bodyMassResult = result { [self] in try await self.healthService.fetchBodyMassMetric() }
         async let keyMetricsResult = result { [self] in try await self.healthService.fetchRunningKeyMetrics() }
         async let loadDaysResult = result { [self] in try await self.healthService.fetchRunningLoadDays(days: 42) }
         async let loadHistoryDaysResult = result { [self] in try await self.healthService.fetchRunningLoadDays(days: 180) }
         async let hrvHistoryResult = result { [self] in try await self.healthService.fetchHRVHistory(days: 90) }
+        async let sleepHistoryResult = result { [self] in try await self.healthService.fetchSleepScoreHistory(days: 90) }
         async let bodyMassHistoryResult = result { [self] in try await self.healthService.fetchBodyMassHistory(days: 90) }
         async let weeklyRunningHistoryResult = result { [self] in try await self.healthService.fetchWeeklyRunningHistory(weeks: 12) }
         async let monthlyRunningHistoryResult = result { [self] in try await self.healthService.fetchMonthlyRunningHistory(months: 12) }
@@ -76,11 +78,13 @@ final class TodayViewModel: ObservableObject {
             activeEnergyKcal: 0,
             steps: 0,
             runningDistanceKm: 0,
+            walkingDistanceKm: 0,
             workouts: []
         )
         let weekly = await weeklyResult.value ?? RunningDistanceMetric(distanceKm: nil, subtitle: "本周已完成", isEstimated: false)
         let monthly = await monthlyResult.value ?? RunningDistanceMetric(distanceKm: nil, subtitle: "本月累计", isEstimated: false)
-        let hrv = await hrvResult.value ?? HRVMetric(latestMs: nil, sevenDayAverageMs: nil, baselineMs: nil, state: .noData)
+        let hrv = await hrvResult.value ?? HRVMetric(latestMs: nil, overnightAverageMs: nil, sevenDayAverageMs: nil, baselineMs: nil, state: .noData)
+        let sleep = await sleepResult.value ?? SleepMetric(score: nil, qualityTitle: "暂无数据", durationMinutes: nil, asleepMinutes: nil, awakeMinutes: nil, efficiency: nil)
         let bodyMass = await bodyMassResult.value ?? BodyMassMetric(latestKg: nil, updatedAt: nil, trend30dKg: nil)
         let keyMetrics = await keyMetricsResult.value ?? RunningKeyMetrics(
             latestPace: nil,
@@ -106,6 +110,7 @@ final class TodayViewModel: ObservableObject {
             longTermLoad: load.longTerm,
             loadBalance: load.balance,
             hrv: hrv,
+            sleep: sleep,
             bodyMass: bodyMass,
             todayActivity: today,
             weeklyRunning: weekly,
@@ -113,6 +118,7 @@ final class TodayViewModel: ObservableObject {
             runningKeyMetrics: keyMetrics,
             loadHistory: loadHistory,
             hrvHistory: await hrvHistoryResult.value ?? [],
+            sleepScoreHistory: await sleepHistoryResult.value ?? [],
             bodyMassHistory: await bodyMassHistoryResult.value ?? [],
             weeklyRunningHistory: await weeklyRunningHistoryResult.value ?? [],
             monthlyRunningHistory: await monthlyRunningHistoryResult.value ?? [],
@@ -126,11 +132,13 @@ final class TodayViewModel: ObservableObject {
             weeklyResult.error,
             monthlyResult.error,
             hrvResult.error,
+            sleepResult.error,
             bodyMassResult.error,
             keyMetricsResult.error,
             loadDaysResult.error,
             loadHistoryDaysResult.error,
             hrvHistoryResult.error,
+            sleepHistoryResult.error,
             bodyMassHistoryResult.error,
             weeklyRunningHistoryResult.error,
             monthlyRunningHistoryResult.error
@@ -168,6 +176,7 @@ final class TodayViewModel: ObservableObject {
             longTermLoad: latestSnapshot.longTermLoad,
             loadBalance: latestSnapshot.loadBalance,
             hrv: latestSnapshot.hrv,
+            sleep: latestSnapshot.sleep,
             bodyMass: latestSnapshot.bodyMass,
             todayActivity: latestSnapshot.todayActivity,
             weeklyRunning: latestSnapshot.weeklyRunning,
@@ -175,6 +184,7 @@ final class TodayViewModel: ObservableObject {
             runningKeyMetrics: latestSnapshot.runningKeyMetrics,
             loadHistory: latestSnapshot.loadHistory,
             hrvHistory: latestSnapshot.hrvHistory,
+            sleepScoreHistory: latestSnapshot.sleepScoreHistory,
             bodyMassHistory: latestSnapshot.bodyMassHistory,
             weeklyRunningHistory: latestSnapshot.weeklyRunningHistory,
             monthlyRunningHistory: latestSnapshot.monthlyRunningHistory,

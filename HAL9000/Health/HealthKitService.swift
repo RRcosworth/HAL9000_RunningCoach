@@ -9,10 +9,12 @@ protocol HealthKitServing {
     func fetchWeeklyRunningDistance() async throws -> RunningDistanceMetric
     func fetchMonthlyRunningDistance() async throws -> RunningDistanceMetric
     func fetchHRVMetric() async throws -> HRVMetric
+    func fetchSleepMetric() async throws -> SleepMetric
     func fetchBodyMassMetric() async throws -> BodyMassMetric
     func fetchRunningKeyMetrics() async throws -> RunningKeyMetrics
     func fetchRunningLoadDays(days: Int) async throws -> [RunningLoadDay]
     func fetchHRVHistory(days: Int) async throws -> [HealthValuePoint]
+    func fetchSleepScoreHistory(days: Int) async throws -> [HealthValuePoint]
     func fetchBodyMassHistory(days: Int) async throws -> [HealthValuePoint]
     func fetchWeeklyRunningHistory(weeks: Int) async throws -> [HealthValuePoint]
     func fetchMonthlyRunningHistory(months: Int) async throws -> [HealthValuePoint]
@@ -41,7 +43,7 @@ actor HealthKitService: HealthKitServing {
 
     private let healthStore = HKHealthStore()
     private let calendar = Calendar.current
-    private let authorizationRequestVersion = 2
+    private let authorizationRequestVersion = 3
     private let authorizationRequestVersionKey = "healthKitAuthorizationRequestVersion"
 
     func requestAuthorization() async throws {
@@ -68,7 +70,7 @@ actor HealthKitService: HealthKitServing {
 
     func authorizationState() async -> HealthAuthorizationState {
         guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
-        return .authorized
+        return hasRequestedAuthorization ? .authorized : .notDetermined
     }
 
     private var hasRequestedAuthorization: Bool {
@@ -82,6 +84,7 @@ actor HealthKitService: HealthKitServing {
         async let exercise = sumQuantity(.appleExerciseTime, unit: .minute(), from: start, to: now)
         async let energy = sumQuantity(.activeEnergyBurned, unit: .kilocalorie(), from: start, to: now)
         async let steps = sumQuantity(.stepCount, unit: .count(), from: start, to: now)
+        async let walkingRunningDistance = sumQuantity(.distanceWalkingRunning, unit: .meterUnit(with: .kilo), from: start, to: now)
         async let runningDistance = runningDistance(from: start, to: now)
         async let workouts = runningWorkouts(from: start, to: now)
 
@@ -100,6 +103,7 @@ actor HealthKitService: HealthKitServing {
             activeEnergyKcal: try await energy,
             steps: try await steps,
             runningDistanceKm: try await runningDistance,
+            walkingDistanceKm: max(try await walkingRunningDistance - (try await runningDistance), 0),
             workouts: todayWorkouts
         )
     }
@@ -144,10 +148,17 @@ actor HealthKitService: HealthKitServing {
 
         return HRVMetric(
             latestMs: latestSample?.value,
+            overnightAverageMs: try await overnightHRVAverage(reference: now),
             sevenDayAverageMs: sevenDayValue,
             baselineMs: baselineValue,
             state: hrvState(sevenDayAverage: sevenDayValue, baseline: baselineValue)
         )
+    }
+
+    func fetchSleepMetric() async throws -> SleepMetric {
+        let interval = lastSleepWindow(reference: Date())
+        let samples = try await sleepSamples(from: interval.start, to: interval.end)
+        return sleepMetric(from: samples)
     }
 
     func fetchBodyMassMetric() async throws -> BodyMassMetric {
@@ -178,14 +189,17 @@ actor HealthKitService: HealthKitServing {
     func fetchRunningKeyMetrics() async throws -> RunningKeyMetrics {
         let now = Date()
         let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+        let latestRun = try await runningWorkouts(from: thirtyDaysAgo, to: now).first
 
         async let restingHeartRate = latestQuantity(.restingHeartRate, unit: .count().unitDivided(by: .minute()), from: thirtyDaysAgo, to: now)
-        async let averageHeartRate = averageQuantity(.heartRate, unit: .count().unitDivided(by: .minute()), from: thirtyDaysAgo, to: now)
-        async let runningPower = latestQuantity(.runningPower, unit: .watt(), from: thirtyDaysAgo, to: now)
-        async let runningSpeed = latestQuantity(.runningSpeed, unit: .meter().unitDivided(by: .second()), from: thirtyDaysAgo, to: now)
-        async let strideLength = latestQuantity(.runningStrideLength, unit: .meterUnit(with: .centi), from: thirtyDaysAgo, to: now)
-        async let contactTime = latestQuantity(.runningGroundContactTime, unit: .secondUnit(with: .milli), from: thirtyDaysAgo, to: now)
-        async let verticalOscillation = latestQuantity(.runningVerticalOscillation, unit: .meterUnit(with: .centi), from: thirtyDaysAgo, to: now)
+        let metricStart = latestRun?.startDate ?? thirtyDaysAgo
+        let metricEnd = latestRun?.endDate ?? now
+        async let averageHeartRate = averageQuantity(.heartRate, unit: .count().unitDivided(by: .minute()), from: metricStart, to: metricEnd)
+        async let runningPower = latestQuantity(.runningPower, unit: .watt(), from: metricStart, to: metricEnd)
+        async let runningSpeed = latestQuantity(.runningSpeed, unit: .meter().unitDivided(by: .second()), from: metricStart, to: metricEnd)
+        async let strideLength = latestQuantity(.runningStrideLength, unit: .meterUnit(with: .centi), from: metricStart, to: metricEnd)
+        async let contactTime = latestQuantity(.runningGroundContactTime, unit: .secondUnit(with: .milli), from: metricStart, to: metricEnd)
+        async let verticalOscillation = latestQuantity(.runningVerticalOscillation, unit: .meterUnit(with: .centi), from: metricStart, to: metricEnd)
 
         let speedSample = try await runningSpeed
         let restingHeartRateSample = try await restingHeartRate
@@ -195,7 +209,7 @@ actor HealthKitService: HealthKitServing {
         let verticalOscillationSample = try await verticalOscillation
 
         return RunningKeyMetrics(
-            latestPace: paceString(fromMetersPerSecond: speedSample?.value),
+            latestPace: latestRun.flatMap(workoutPaceString) ?? paceString(fromMetersPerSecond: speedSample?.value),
             averageHeartRate: try await averageHeartRate,
             restingHeartRate: restingHeartRateSample?.value,
             runningPower: runningPowerSample?.value,
@@ -258,6 +272,24 @@ actor HealthKitService: HealthKitServing {
             HealthValuePoint(date: date, value: samples.map(\.value).reduce(0, +) / Double(samples.count))
         }
         .sorted { $0.date < $1.date }
+    }
+
+    func fetchSleepScoreHistory(days: Int) async throws -> [HealthValuePoint] {
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        var points: [HealthValuePoint] = []
+
+        for offset in 0..<days {
+            guard let day = calendar.date(byAdding: .day, value: -days + 1 + offset, to: today) else {
+                continue
+            }
+            let interval = lastSleepWindow(reference: day.addingTimeInterval(12 * 60 * 60))
+            let metric = sleepMetric(from: try await sleepSamples(from: interval.start, to: interval.end))
+            guard let score = metric.score else { continue }
+            points.append(HealthValuePoint(date: day, value: score))
+        }
+
+        return points
     }
 
     func fetchBodyMassHistory(days: Int) async throws -> [HealthValuePoint] {
@@ -387,12 +419,16 @@ actor HealthKitService: HealthKitServing {
             .restingHeartRate,
             .heartRateVariabilitySDNN,
             .bodyMass,
+            .distanceWalkingRunning,
             .runningSpeed,
             .runningPower,
             .runningStrideLength,
             .runningGroundContactTime,
             .runningVerticalOscillation
         ].compactMap { quantityType($0) }.forEach { types.insert($0) }
+        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            types.insert(sleepType)
+        }
 
         return types
     }
@@ -510,6 +546,25 @@ actor HealthKitService: HealthKitServing {
                     .map { (value: $0.quantity.doubleValue(for: unit), date: $0.endDate) } ?? []
 
                 continuation.resume(returning: values)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func sleepSamples(from start: Date, to end: Date) async throws -> [HKCategorySample] {
+        guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return [] }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                continuation.resume(returning: samples as? [HKCategorySample] ?? [])
             }
 
             healthStore.execute(query)
@@ -665,6 +720,101 @@ actor HealthKitService: HealthKitServing {
         if sevenDayAverage >= baseline * 1.10 { return .aboveBaseline }
         if sevenDayAverage < baseline * 0.90 { return .belowBaseline }
         return .normal
+    }
+
+    private func overnightHRVAverage(reference: Date) async throws -> Double? {
+        let interval = lastSleepWindow(reference: reference)
+        return try await averageQuantity(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), from: interval.start, to: interval.end)
+    }
+
+    private func lastSleepWindow(reference: Date) -> (start: Date, end: Date) {
+        let dayStart = calendar.startOfDay(for: reference)
+        let noon = dayStart.addingTimeInterval(12 * 60 * 60)
+
+        if reference >= noon {
+            let start = calendar.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+            return (start, noon)
+        }
+
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: dayStart) ?? dayStart
+        return (previousDay.addingTimeInterval(12 * 60 * 60), dayStart.addingTimeInterval(12 * 60 * 60))
+    }
+
+    private func sleepMetric(from samples: [HKCategorySample]) -> SleepMetric {
+        guard !samples.isEmpty else {
+            return SleepMetric(score: nil, qualityTitle: "暂无数据", durationMinutes: nil, asleepMinutes: nil, awakeMinutes: nil, efficiency: nil)
+        }
+
+        var asleepMinutes = 0.0
+        var awakeMinutes = 0.0
+        var inBedMinutes = 0.0
+        var restorativeMinutes = 0.0
+
+        for sample in samples {
+            let minutes = sample.endDate.timeIntervalSince(sample.startDate) / 60
+            switch sample.value {
+            case HKCategoryValueSleepAnalysis.awake.rawValue:
+                awakeMinutes += minutes
+            case HKCategoryValueSleepAnalysis.inBed.rawValue:
+                inBedMinutes += minutes
+            case HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepREM.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
+                asleepMinutes += minutes
+                if sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                    sample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue {
+                    restorativeMinutes += minutes
+                }
+            default:
+                break
+            }
+        }
+
+        let sleepSpan = max(samples.map(\.endDate).max()?.timeIntervalSince(samples.map(\.startDate).min() ?? Date()) ?? 0, 0) / 60
+        let durationMinutes = max(asleepMinutes, 0)
+        let denominator = max(inBedMinutes, sleepSpan, durationMinutes + awakeMinutes)
+        let efficiency = denominator > 0 ? durationMinutes / denominator : nil
+
+        guard durationMinutes > 0 else {
+            return SleepMetric(score: nil, qualityTitle: "暂无睡眠", durationMinutes: nil, asleepMinutes: nil, awakeMinutes: awakeMinutes, efficiency: efficiency)
+        }
+
+        let durationScore = min(durationMinutes / 480, 1) * 50
+        let efficiencyScore = min(max(((efficiency ?? 0) - 0.65) / 0.25, 0), 1) * 30
+        let restorativeRatio = restorativeMinutes / durationMinutes
+        let stageScore = min(restorativeRatio / 0.35, 1) * 20
+        let score = min(max(durationScore + efficiencyScore + stageScore, 0), 100)
+
+        return SleepMetric(
+            score: score,
+            qualityTitle: sleepQualityTitle(score),
+            durationMinutes: durationMinutes,
+            asleepMinutes: asleepMinutes,
+            awakeMinutes: awakeMinutes,
+            efficiency: efficiency
+        )
+    }
+
+    private func sleepQualityTitle(_ score: Double) -> String {
+        switch score {
+        case 85...:
+            return "优秀"
+        case 70..<85:
+            return "良好"
+        case 55..<70:
+            return "一般"
+        default:
+            return "欠佳"
+        }
+    }
+
+    private func workoutPaceString(_ workout: HKWorkout) -> String? {
+        guard let distanceKm = workoutDistanceKm(workout), distanceKm > 0 else { return nil }
+        let secondsPerKm = workout.duration / distanceKm
+        let minutes = Int(secondsPerKm) / 60
+        let seconds = Int(secondsPerKm) % 60
+        return String(format: "%d:%02d /km", minutes, seconds)
     }
 
     private func paceString(fromMetersPerSecond speed: Double?) -> String? {

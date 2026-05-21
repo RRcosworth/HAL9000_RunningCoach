@@ -156,15 +156,17 @@ private enum TodayDetailRoute: String, Hashable {
     case trainingLoad
     case hrv
     case bodyMass
+    case walkingDistance
     case weeklyRunning
     case monthlyRunning
 
     var title: String {
         switch self {
         case .readiness: return "状态稳定"
-        case .trainingLoad: return "训练负荷"
+        case .trainingLoad: return "恢复状态"
         case .hrv: return "HRV 状态"
         case .bodyMass: return "体重"
+        case .walkingDistance: return "步行距离"
         case .weeklyRunning: return "周跑量"
         case .monthlyRunning: return "月跑量"
         }
@@ -191,6 +193,7 @@ private enum DetailRange: Int, CaseIterable, Identifiable {
 
 private struct TodayHealthDashboard: View {
     let snapshot: TodayHealthSnapshot
+    @AppStorage("targetBodyMassKg") private var targetBodyMassKg = 70.0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -207,18 +210,18 @@ private struct TodayHealthDashboard: View {
             .buttonStyle(.plain)
 
             NavigationLink(value: TodayDetailRoute.trainingLoad) {
-                loadCard
+                recoveryCard
             }
             .buttonStyle(.plain)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                NavigationLink(value: TodayDetailRoute.hrv) {
+                NavigationLink(value: TodayDetailRoute.walkingDistance) {
                     HealthMetricCard(
-                        title: "HRV 状态",
-                        value: snapshot.hrv.latestMs.map { String(format: "%.0f ms", $0) } ?? "--",
-                        subtitle: "\(snapshot.hrv.state.title) · \(snapshot.hrv.state.guidance)",
-                        systemImage: "waveform.path.ecg",
-                        tint: tint(for: snapshot.hrv.state)
+                        title: "步行距离",
+                        value: String(format: "%.1f km", snapshot.todayActivity.walkingDistanceKm),
+                        subtitle: "今日步行与日常活动",
+                        systemImage: "figure.walk",
+                        tint: AppColor.success
                     )
                 }
                 .buttonStyle(.plain)
@@ -289,11 +292,11 @@ private struct TodayHealthDashboard: View {
         }
     }
 
-    private var loadCard: some View {
+    private var recoveryCard: some View {
         TodayCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("训练负荷")
+                    Text("睡眠与 HRV")
                         .font(AppTypography.title3)
                         .foregroundStyle(AppColor.textPrimary)
                     Spacer()
@@ -303,10 +306,20 @@ private struct TodayHealthDashboard: View {
                 }
 
                 HStack(spacing: 12) {
-                    loadColumn(snapshot.shortTermLoad)
+                    recoveryColumn(
+                        title: "睡眠分数",
+                        value: snapshot.sleep.scoreText,
+                        subtitle: "\(snapshot.sleep.qualityTitle) · \(snapshot.sleep.durationText)",
+                        tint: sleepTint
+                    )
                     Divider()
                         .background(AppColor.divider)
-                    loadColumn(snapshot.longTermLoad)
+                    recoveryColumn(
+                        title: "HRV 状态",
+                        value: snapshot.hrv.overnightAverageMs.map { String(format: "%.0f ms", $0) } ?? "--",
+                        subtitle: "夜间平均 · SDNN",
+                        tint: tint(for: snapshot.hrv.state)
+                    )
                 }
             }
         }
@@ -367,6 +380,10 @@ private struct TodayHealthDashboard: View {
     }
 
     private var bodyMassSubtitle: String {
+        if let latest = snapshot.bodyMass.latestKg {
+            return String(format: "目标 %.1f kg · 需减 %.1f kg", targetBodyMassKg, max(latest - targetBodyMassKg, 0))
+        }
+
         guard let trend = snapshot.bodyMass.trend30dKg else {
             return "最近一次记录"
         }
@@ -377,6 +394,13 @@ private struct TodayHealthDashboard: View {
 
         let sign = trend > 0 ? "+" : ""
         return "30天 \(sign)\(String(format: "%.1f", trend)) kg"
+    }
+
+    private var sleepTint: Color {
+        guard let score = snapshot.sleep.score else { return AppColor.textTertiary }
+        if score >= 70 { return AppColor.success }
+        if score >= 55 { return AppColor.warning }
+        return AppColor.error
     }
 
     private var readinessIcon: String {
@@ -431,6 +455,24 @@ private struct TodayHealthDashboard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func recoveryColumn(title: String, value: String, subtitle: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColor.textSecondary)
+            Text(value)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+            Text(subtitle)
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColor.textSecondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func smallStat(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
@@ -474,6 +516,7 @@ private struct TodayMetricDetailView: View {
     let snapshot: TodayHealthSnapshot
     @Environment(\.dismiss) private var dismiss
     @State private var range: DetailRange = .thirty
+    @AppStorage("targetBodyMassKg") private var targetBodyMassKg = 70.0
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -492,6 +535,8 @@ private struct TodayMetricDetailView: View {
                 case .bodyMass:
                     rangedPicker
                     bodyMassDetail
+                case .walkingDistance:
+                    walkingDistanceDetail
                 case .weeklyRunning:
                     weeklyRunningDetail
                 case .monthlyRunning:
@@ -577,14 +622,43 @@ private struct TodayMetricDetailView: View {
     }
 
     private var trainingLoadDetail: some View {
-        TodayCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("短期 / 长期负荷")
-                    .font(AppTypography.title3)
-                    .foregroundStyle(AppColor.textPrimary)
-                loadChart(points: filteredLoadHistory)
-                    .frame(height: 240)
-                detailLegend
+        VStack(alignment: .leading, spacing: 16) {
+            TodayCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("睡眠分数")
+                        .font(AppTypography.title3)
+                        .foregroundStyle(AppColor.textPrimary)
+
+                    HStack(alignment: .lastTextBaseline, spacing: 12) {
+                        Text(snapshot.sleep.scoreText)
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundStyle(sleepTint)
+                        Text(snapshot.sleep.qualityTitle)
+                            .font(AppTypography.title2)
+                            .foregroundStyle(AppColor.textPrimary)
+                        Spacer()
+                        Text(snapshot.sleep.durationText)
+                            .font(AppTypography.title3)
+                            .foregroundStyle(AppColor.textSecondary)
+                    }
+
+                    sleepScoreChart(points: filteredValues(snapshot.sleepScoreHistory))
+                        .frame(height: 190)
+
+                    detailRow("睡眠效率", snapshot.sleep.efficiency.map { String(format: "%.0f%%", $0 * 100) } ?? "--", "按睡着时间 / 在床或睡眠窗口估算")
+                }
+            }
+
+            TodayCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("HRV 状态")
+                        .font(AppTypography.title3)
+                        .foregroundStyle(AppColor.textPrimary)
+                    hrvGauge
+                        .frame(height: 180)
+                    detailRow("SDNN Index", snapshot.hrv.overnightAverageMs.map { String(format: "%.0f ms", $0) } ?? "--", "夜间平均，优先反映睡眠期间恢复状态")
+                    detailRow("正常区间", hrvNormalRangeText, "基于 28 天个人基线的 ±10%")
+                }
             }
         }
     }
@@ -608,9 +682,48 @@ private struct TodayMetricDetailView: View {
                 Text("体重趋势")
                     .font(AppTypography.title3)
                     .foregroundStyle(AppColor.textPrimary)
-                valueLineChart(points: filteredValues(snapshot.bodyMassHistory), unit: "kg", tint: AppColor.accent)
+                bodyMassChart(points: filteredValues(snapshot.bodyMassHistory))
                     .frame(height: 240)
                 detailRow("最新体重", snapshot.bodyMass.latestKg.map { String(format: "%.1f kg", $0) } ?? "--", "Apple 健康最近一次记录")
+                detailRow("减重目标", weightLossTargetText, "今日体重减去目标体重")
+                HStack {
+                    Text("目标体重")
+                        .font(AppTypography.subheadline)
+                        .foregroundStyle(AppColor.textSecondary)
+                    Spacer()
+                    TextField("目标体重", value: $targetBodyMassKg, format: .number.precision(.fractionLength(1)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(AppTypography.headline)
+                        .foregroundStyle(AppColor.textPrimary)
+                        .frame(width: 96)
+                    Text("kg")
+                        .font(AppTypography.subheadline)
+                        .foregroundStyle(AppColor.textSecondary)
+                }
+                .padding(12)
+                .background(AppColor.controlBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+    }
+
+    private var walkingDistanceDetail: some View {
+        TodayCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("今日步行距离")
+                    .font(AppTypography.title3)
+                    .foregroundStyle(AppColor.textPrimary)
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text(String(format: "%.1f", snapshot.todayActivity.walkingDistanceKm))
+                        .font(.system(size: 46, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppColor.success)
+                    Text("km")
+                        .font(AppTypography.title3)
+                        .foregroundStyle(AppColor.textSecondary)
+                }
+                detailRow("步数", String(format: "%.0f", snapshot.todayActivity.steps), "来自 Apple 健康今日步数")
+                detailRow("说明", "已排除跑步距离", "步行距离用 walking/running 总距离减去跑步 workout 距离估算")
             }
         }
     }
@@ -726,6 +839,49 @@ private struct TodayMetricDetailView: View {
         }
     }
 
+    private func sleepScoreChart(points: [HealthValuePoint]) -> some View {
+        ChartOrEmpty(points: points) {
+            Chart(points) { point in
+                BarMark(
+                    x: .value("日期", point.date),
+                    y: .value("睡眠分数", point.value)
+                )
+                .foregroundStyle(point.value >= 70 ? AppColor.success : (point.value >= 55 ? AppColor.warning : AppColor.error))
+                .cornerRadius(5)
+            }
+            .chartYScale(domain: 0...100)
+        }
+    }
+
+    private var hrvGauge: some View {
+        Gauge(value: hrvGaugeValue, in: 0...1) {
+            Text("HRV")
+        } currentValueLabel: {
+            VStack(spacing: 2) {
+                Text(snapshot.hrv.overnightAverageMs.map { String(format: "%.0f ms", $0) } ?? "--")
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                Text("夜间平均")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(AppColor.textSecondary)
+            }
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+        .tint(hrvGaugeTint)
+    }
+
+    private var hrvGaugeValue: Double {
+        guard let value = snapshot.hrv.overnightAverageMs, let baseline = snapshot.hrv.baselineMs, baseline > 0 else { return 0 }
+        return min(max(value / (baseline * 1.25), 0), 1)
+    }
+
+    private var hrvGaugeTint: Color {
+        switch snapshot.hrv.state {
+        case .aboveBaseline, .normal: return AppColor.accent
+        case .belowBaseline: return AppColor.warning
+        case .noData: return AppColor.textTertiary
+        }
+    }
+
     private func valueLineChart(points: [HealthValuePoint], unit: String, tint: Color) -> some View {
         ChartOrEmpty(points: points) {
             Chart(points) { point in
@@ -742,6 +898,35 @@ private struct TodayMetricDetailView: View {
                 )
                 .foregroundStyle(tint)
             }
+        }
+    }
+
+    private func bodyMassChart(points: [HealthValuePoint]) -> some View {
+        let values = points.map(\.value) + [targetBodyMassKg]
+        let upper = max((values.max() ?? 80) + 2, 55)
+
+        return ChartOrEmpty(points: points) {
+            Chart {
+                RuleMark(y: .value("目标体重", targetBodyMassKg))
+                    .foregroundStyle(AppColor.success.opacity(0.65))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+
+                ForEach(points) { point in
+                    LineMark(
+                        x: .value("日期", point.date),
+                        y: .value("kg", point.value)
+                    )
+                    .foregroundStyle(AppColor.accent)
+                    .interpolationMethod(.catmullRom)
+
+                    PointMark(
+                        x: .value("日期", point.date),
+                        y: .value("kg", point.value)
+                    )
+                    .foregroundStyle(AppColor.accent)
+                }
+            }
+            .chartYScale(domain: 50...upper)
         }
     }
 
@@ -805,6 +990,18 @@ private struct TodayMetricDetailView: View {
     private var hrvNormalRangeText: String {
         guard let baseline = snapshot.hrv.baselineMs else { return "--" }
         return String(format: "%.0f-%.0f ms", baseline * 0.9, baseline * 1.1)
+    }
+
+    private var sleepTint: Color {
+        guard let score = snapshot.sleep.score else { return AppColor.textTertiary }
+        if score >= 70 { return AppColor.success }
+        if score >= 55 { return AppColor.warning }
+        return AppColor.error
+    }
+
+    private var weightLossTargetText: String {
+        guard let latest = snapshot.bodyMass.latestKg else { return "--" }
+        return String(format: "%.1f kg", max(latest - targetBodyMassKg, 0))
     }
 
     private var detailLegend: some View {
@@ -917,7 +1114,7 @@ private struct HealthPermissionView: View {
                 Text("连接 Apple 健康")
                     .font(AppTypography.title3)
                     .foregroundStyle(AppColor.textPrimary)
-                Text("读取跑步、HRV、体重和运动记录，用来生成今日训练状态。")
+                Text("读取跑步、步行、睡眠、HRV、体重和运动记录，用来生成今日训练状态。")
                     .font(AppTypography.subheadline)
                     .foregroundStyle(AppColor.textSecondary)
                     .multilineTextAlignment(.center)

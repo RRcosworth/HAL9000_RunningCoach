@@ -6,6 +6,7 @@ struct TodayHealthSnapshot: Equatable {
     let longTermLoad: TrainingLoadMetric
     let loadBalance: LoadBalanceState
     let hrv: HRVMetric
+    let sleep: SleepMetric
     let bodyMass: BodyMassMetric
     let todayActivity: TodayActivityMetric
     let weeklyRunning: RunningDistanceMetric
@@ -13,6 +14,7 @@ struct TodayHealthSnapshot: Equatable {
     let runningKeyMetrics: RunningKeyMetrics
     let loadHistory: [TrainingLoadHistoryPoint]
     let hrvHistory: [HealthValuePoint]
+    let sleepScoreHistory: [HealthValuePoint]
     let bodyMassHistory: [HealthValuePoint]
     let weeklyRunningHistory: [HealthValuePoint]
     let monthlyRunningHistory: [HealthValuePoint]
@@ -70,6 +72,7 @@ enum LoadBalanceState: Equatable {
 
 struct HRVMetric: Equatable {
     let latestMs: Double?
+    let overnightAverageMs: Double?
     let sevenDayAverageMs: Double?
     let baselineMs: Double?
     let state: HRVState
@@ -100,6 +103,27 @@ enum HRVState: Equatable {
     }
 }
 
+struct SleepMetric: Equatable {
+    let score: Double?
+    let qualityTitle: String
+    let durationMinutes: Double?
+    let asleepMinutes: Double?
+    let awakeMinutes: Double?
+    let efficiency: Double?
+
+    var scoreText: String {
+        guard let score else { return "--" }
+        return String(format: "%.0f", score)
+    }
+
+    var durationText: String {
+        guard let durationMinutes else { return "--" }
+        let hours = Int(durationMinutes) / 60
+        let minutes = Int(durationMinutes) % 60
+        return "\(hours)时 \(minutes)分"
+    }
+}
+
 struct BodyMassMetric: Equatable {
     let latestKg: Double?
     let updatedAt: Date?
@@ -111,6 +135,7 @@ struct TodayActivityMetric: Equatable {
     let activeEnergyKcal: Double
     let steps: Double
     let runningDistanceKm: Double
+    let walkingDistanceKm: Double
     let workouts: [TodayWorkoutSummary]
 }
 
