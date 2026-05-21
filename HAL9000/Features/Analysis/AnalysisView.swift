@@ -342,9 +342,14 @@ final class AnalysisViewModel: ObservableObject {
         state = .loading
 
         do {
-            let days = try await healthService.fetchRunningLoadDays(days: 42)
-            let loads = loadCalculator.calculate(days: days)
-            let snapshot = AnalysisSnapshotBuilder(calendar: calendar).build(days: days, loads: loads)
+            let days = try await healthService.fetchRunningLoadDays(days: 180)
+            let tsbResult = loadCalculator.calculateTSB(days: days)
+            let hasEnoughTSBData = days.filter { $0.runningDistanceKm > 0 || $0.exerciseMinutes > 0 }.count >= 42
+            let snapshot = AnalysisSnapshotBuilder(calendar: calendar).build(
+                days: days,
+                tsbResult: tsbResult,
+                hasEnoughTSBData: hasEnoughTSBData
+            )
             state = .loaded(snapshot)
         } catch {
             state = .failed(error.localizedDescription)
@@ -366,6 +371,7 @@ struct AnalysisSnapshot: Equatable {
     let shortTermLoad: TrainingLoadMetric
     let longTermLoad: TrainingLoadMetric
     let loadBalance: LoadBalanceState
+    let tsbValue: Double?
     let sevenDayDistanceKm: Double
     let fortyTwoDayDistanceKm: Double
     let weeklyVariation: Double?
@@ -380,6 +386,7 @@ struct AnalysisSnapshot: Equatable {
             shortTermLoad: shortTermLoad,
             longTermLoad: longTermLoad,
             loadBalance: loadBalance,
+            tsbValue: tsbValue,
             sevenDayDistanceKm: sevenDayDistanceKm,
             fortyTwoDayDistanceKm: fortyTwoDayDistanceKm,
             weeklyVariation: weeklyVariation,
@@ -398,8 +405,7 @@ struct AnalysisSnapshot: Equatable {
     }
 
     var tsb: Double? {
-        guard let short = shortTermLoad.value, let long = longTermLoad.value else { return nil }
-        return long - short
+        tsbValue
     }
 
     var tsbText: String {
@@ -481,21 +487,35 @@ struct AnalysisSnapshotBuilder {
     let calendar: Calendar
     private let referenceMileageKm = 40.0
 
-    func build(days: [RunningLoadDay], loads: TrainingLoadResult) -> AnalysisSnapshot {
+    func build(days: [RunningLoadDay], tsbResult: TSBResult, hasEnoughTSBData: Bool) -> AnalysisSnapshot {
         let sorted = days.sorted { $0.date < $1.date }
-        let weeklyVolumes = buildWeeklyVolumes(days: sorted)
-        let sevenDayDistance = sorted.suffix(7).map(\.runningDistanceKm).reduce(0, +)
-        let totalDistance = sorted.map(\.runningDistanceKm).reduce(0, +)
+        let analysisDays = Array(sorted.suffix(42))
+        let weeklyVolumes = buildWeeklyVolumes(days: analysisDays)
+        let sevenDayDistance = analysisDays.suffix(7).map(\.runningDistanceKm).reduce(0, +)
+        let totalDistance = analysisDays.map(\.runningDistanceKm).reduce(0, +)
         let variation = weeklyVariation(from: weeklyVolumes)
-        let lastRunDate = sorted.last(where: { $0.runningDistanceKm > 0 })?.date
+        let lastRunDate = analysisDays.last(where: { $0.runningDistanceKm > 0 })?.date
         let daysSinceLastRun = lastRunDate.map { calendar.dateComponents([.day], from: calendar.startOfDay(for: $0), to: calendar.startOfDay(for: Date())).day ?? 0 }
+        let tsbState = TSBCalculator().state(for: tsbResult.current.tsb, hasEnoughData: hasEnoughTSBData)
+        let loadBalance = loadBalance(for: tsbState)
 
         let snapshot = AnalysisSnapshot(
             generatedAt: Date(),
             weeklyVolumes: weeklyVolumes,
-            shortTermLoad: loads.shortTerm,
-            longTermLoad: loads.longTerm,
-            loadBalance: loads.balance,
+            shortTermLoad: TrainingLoadMetric(
+                value: hasEnoughTSBData ? tsbResult.current.atl : nil,
+                label: "ATL",
+                trend: .unknown,
+                subtitle: "7天 EWMA"
+            ),
+            longTermLoad: TrainingLoadMetric(
+                value: hasEnoughTSBData ? tsbResult.current.ctl : nil,
+                label: "CTL",
+                trend: .unknown,
+                subtitle: "42天 EWMA"
+            ),
+            loadBalance: loadBalance,
+            tsbValue: hasEnoughTSBData ? tsbResult.current.tsb : nil,
             sevenDayDistanceKm: sevenDayDistance,
             fortyTwoDayDistanceKm: totalDistance,
             weeklyVariation: variation,
@@ -505,6 +525,19 @@ struct AnalysisSnapshotBuilder {
         )
 
         return snapshot.withInsights(buildInsights(snapshot))
+    }
+
+    private func loadBalance(for tsbState: TSBState) -> LoadBalanceState {
+        switch tsbState {
+        case .fresh:
+            return .fresh
+        case .neutral:
+            return .productive
+        case .fatigued, .highRisk:
+            return .strained
+        case .noData:
+            return .unknown
+        }
     }
 
     private func buildWeeklyVolumes(days: [RunningLoadDay]) -> [AnalysisWeekVolume] {

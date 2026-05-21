@@ -65,7 +65,7 @@ final class TodayViewModel: ObservableObject {
         async let bodyMassResult = result { [self] in try await self.healthService.fetchBodyMassMetric() }
         async let keyMetricsResult = result { [self] in try await self.healthService.fetchRunningKeyMetrics() }
         async let loadDaysResult = result { [self] in try await self.healthService.fetchRunningLoadDays(days: 42) }
-        async let loadHistoryDaysResult = result { [self] in try await self.healthService.fetchRunningLoadDays(days: 132) }
+        async let loadHistoryDaysResult = result { [self] in try await self.healthService.fetchRunningLoadDays(days: 180) }
         async let hrvHistoryResult = result { [self] in try await self.healthService.fetchHRVHistory(days: 90) }
         async let bodyMassHistoryResult = result { [self] in try await self.healthService.fetchBodyMassHistory(days: 90) }
         async let weeklyRunningHistoryResult = result { [self] in try await self.healthService.fetchWeeklyRunningHistory(weeks: 12) }
