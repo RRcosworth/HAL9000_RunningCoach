@@ -446,12 +446,12 @@ final class AnalysisViewModel: ObservableObject {
 
         do {
             async let daysResult = healthService.fetchRunningLoadDays(days: 180)
-            async let heartRateSamplesResult = healthService.fetchRunningHeartRateSamples(days: 42)
-            async let maxHeartRateResult = healthService.fetchMaxHeartRate()
+            async let heartRateSamplesResult = fetchOptionalRunningHeartRateSamples()
+            async let maxHeartRateResult = fetchOptionalMaxHeartRate()
 
             let days = try await daysResult
-            let heartRateSamples = try await heartRateSamplesResult
-            let maxHeartRate = try await maxHeartRateResult
+            let heartRateSamples = await heartRateSamplesResult
+            let maxHeartRate = await maxHeartRateResult
             let tsbResult = loadCalculator.calculateTSB(days: days)
             let hasEnoughTSBData = days.filter { $0.runningDistanceKm > 0 || $0.exerciseMinutes > 0 }.count >= 42
             let snapshot = AnalysisSnapshotBuilder(calendar: calendar).build(
@@ -464,6 +464,22 @@ final class AnalysisViewModel: ObservableObject {
             state = .loaded(snapshot)
         } catch {
             state = .failed(error.localizedDescription)
+        }
+    }
+
+    private func fetchOptionalRunningHeartRateSamples() async -> [HeartRateSample] {
+        do {
+            return try await healthService.fetchRunningHeartRateSamples(days: 42)
+        } catch {
+            return []
+        }
+    }
+
+    private func fetchOptionalMaxHeartRate() async -> Double {
+        do {
+            return try await healthService.fetchMaxHeartRate()
+        } catch {
+            return 190
         }
     }
 }
