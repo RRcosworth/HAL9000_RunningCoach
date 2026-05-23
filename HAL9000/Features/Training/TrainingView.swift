@@ -128,7 +128,7 @@ struct TrainingView: View {
 
     private var weekPlanSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("本周训练计划", trailing: "7 天")
+            sectionHeader("本周训练计划", trailing: "\(viewModel.weekDays.count) 天")
 
             ForEach(viewModel.weekDays) { day in
                 weekDayCard(day)
@@ -293,9 +293,9 @@ struct TrainingView: View {
                             .lineLimit(1)
                         Spacer()
                         if !day.isRestDay {
-                            Text(day.sessions.allSatisfy(\.isCompleted) ? "已完成" : "计划")
+                            Text(day.sessions.allSatisfy(\.isCompleted) ? "已完成" : "未完成")
                                 .font(AppTypography.caption)
-                                .foregroundStyle(day.sessions.allSatisfy(\.isCompleted) ? AppColor.success : AppColor.accent)
+                                .foregroundStyle(day.sessions.allSatisfy(\.isCompleted) ? AppColor.success : AppColor.warning)
                         }
                     }
 
@@ -340,9 +340,9 @@ struct TrainingView: View {
 
                 Spacer(minLength: 8)
 
-                Text(session.isCompleted ? "已完成" : "计划")
+                Text(session.isCompleted ? "已完成" : "未完成")
                     .font(AppTypography.caption)
-                    .foregroundStyle(session.isCompleted ? AppColor.success : AppColor.accent)
+                    .foregroundStyle(session.isCompleted ? AppColor.success : AppColor.warning)
             }
 
             HStack(spacing: 8) {
@@ -541,7 +541,12 @@ struct TrainingView: View {
     }
 
     private var completedSessions: [TrainingSession] {
-        viewModel.sessions.filter(\.isCompleted)
+        viewModel.sessions
+            .filter(\.isCompleted)
+            .filter { (($0.actualDistance ?? $0.distance) > 0) || (($0.actualDuration ?? $0.duration) > 0) }
+            .sorted {
+                ($0.startedAt ?? $0.exportDate) > ($1.startedAt ?? $1.exportDate)
+            }
     }
 
     private var exportMessageColor: Color {

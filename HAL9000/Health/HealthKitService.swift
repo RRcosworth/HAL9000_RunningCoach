@@ -772,38 +772,30 @@ actor HealthKitService: HealthKitServing {
     }
 
     private func sleepMetric(from samples: [HKCategorySample]) -> SleepMetric {
-        guard !samples.isEmpty else {
+        let intervals = samples
+            .filter { isSleepValue($0.value) && $0.endDate > $0.startDate }
+            .map { SleepInterval(start: $0.startDate, end: $0.endDate, value: $0.value) }
+
+        guard !intervals.isEmpty else {
             return SleepMetric(score: nil, qualityTitle: "暂无数据", durationMinutes: nil, asleepMinutes: nil, awakeMinutes: nil, efficiency: nil)
         }
 
-        var asleepMinutes = 0.0
-        var awakeMinutes = 0.0
-        var inBedMinutes = 0.0
-        var restorativeMinutes = 0.0
+        let session = sleepSessions(from: intervals)
+            .max { asleepMinutes(in: $0) < asleepMinutes(in: $1) } ?? intervals
 
-        for sample in samples {
-            let minutes = sample.endDate.timeIntervalSince(sample.startDate) / 60
-            switch sample.value {
-            case HKCategoryValueSleepAnalysis.awake.rawValue:
-                awakeMinutes += minutes
-            case HKCategoryValueSleepAnalysis.inBed.rawValue:
-                inBedMinutes += minutes
-            case HKCategoryValueSleepAnalysis.asleepCore.rawValue,
-                 HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
-                 HKCategoryValueSleepAnalysis.asleepREM.rawValue,
-                 HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
-                asleepMinutes += minutes
-                if sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
-                    sample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue {
-                    restorativeMinutes += minutes
-                }
-            default:
-                break
-            }
+        let asleepIntervals = session.filter { isAsleepValue($0.value) }
+        let awakeIntervals = session.filter { $0.value == HKCategoryValueSleepAnalysis.awake.rawValue }
+        let inBedIntervals = session.filter { $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue }
+        let restorativeIntervals = session.filter {
+            $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+            $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
         }
 
-        let sleepSpan = max(samples.map(\.endDate).max()?.timeIntervalSince(samples.map(\.startDate).min() ?? Date()) ?? 0, 0) / 60
-        let durationMinutes = max(asleepMinutes, 0)
+        let durationMinutes = mergedMinutes(asleepIntervals)
+        let awakeMinutes = mergedMinutes(awakeIntervals)
+        let inBedMinutes = mergedMinutes(inBedIntervals)
+        let restorativeMinutes = mergedMinutes(restorativeIntervals)
+        let sleepSpan = max((session.map(\.end).max()?.timeIntervalSince(session.map(\.start).min() ?? Date()) ?? 0) / 60, 0)
         let denominator = max(inBedMinutes, sleepSpan, durationMinutes + awakeMinutes)
         let efficiency = denominator > 0 ? durationMinutes / denominator : nil
 
@@ -821,7 +813,7 @@ actor HealthKitService: HealthKitServing {
             score: score,
             qualityTitle: sleepQualityTitle(score),
             durationMinutes: durationMinutes,
-            asleepMinutes: asleepMinutes,
+            asleepMinutes: durationMinutes,
             awakeMinutes: awakeMinutes,
             efficiency: efficiency
         )
@@ -838,6 +830,80 @@ actor HealthKitService: HealthKitServing {
         default:
             return "欠佳"
         }
+    }
+
+    private struct SleepInterval {
+        let start: Date
+        let end: Date
+        let value: Int
+    }
+
+    private func sleepSessions(from intervals: [SleepInterval]) -> [[SleepInterval]] {
+        let sorted = intervals.sorted { $0.start < $1.start }
+        var sessions: [[SleepInterval]] = []
+        var current: [SleepInterval] = []
+        var currentEnd: Date?
+        let maxSessionGap: TimeInterval = 2 * 60 * 60
+
+        for interval in sorted {
+            guard let end = currentEnd else {
+                current = [interval]
+                currentEnd = interval.end
+                continue
+            }
+
+            if interval.start.timeIntervalSince(end) > maxSessionGap {
+                if !current.isEmpty {
+                    sessions.append(current)
+                }
+                current = [interval]
+                currentEnd = interval.end
+            } else {
+                current.append(interval)
+                currentEnd = max(end, interval.end)
+            }
+        }
+
+        if !current.isEmpty {
+            sessions.append(current)
+        }
+
+        return sessions
+    }
+
+    private func asleepMinutes(in intervals: [SleepInterval]) -> Double {
+        mergedMinutes(intervals.filter { isAsleepValue($0.value) })
+    }
+
+    private func mergedMinutes(_ intervals: [SleepInterval]) -> Double {
+        let sorted = intervals.sorted { $0.start < $1.start }
+        guard var current = sorted.first else { return 0 }
+        var total: TimeInterval = 0
+
+        for interval in sorted.dropFirst() {
+            if interval.start <= current.end {
+                current = SleepInterval(start: current.start, end: max(current.end, interval.end), value: current.value)
+            } else {
+                total += current.end.timeIntervalSince(current.start)
+                current = interval
+            }
+        }
+
+        total += current.end.timeIntervalSince(current.start)
+        return max(total / 60, 0)
+    }
+
+    private func isSleepValue(_ value: Int) -> Bool {
+        value == HKCategoryValueSleepAnalysis.awake.rawValue ||
+        value == HKCategoryValueSleepAnalysis.inBed.rawValue ||
+        isAsleepValue(value)
+    }
+
+    private func isAsleepValue(_ value: Int) -> Bool {
+        value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
+        value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+        value == HKCategoryValueSleepAnalysis.asleepREM.rawValue ||
+        value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
     }
 
     private func workoutPaceString(_ workout: HKWorkout) -> String? {
