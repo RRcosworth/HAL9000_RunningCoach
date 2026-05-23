@@ -87,6 +87,24 @@ struct TrainingSession: Identifiable, Codable {
         return value.contains("run") || value.contains("跑")
     }
 
+    var isRestWorkout: Bool {
+        let typeValue = type.lowercased()
+        let statusValue = status?.lowercased() ?? ""
+        return typeValue == "rest" || typeValue.contains("休息") || statusValue.contains("rest")
+    }
+
+    var hasPlannedWorkout: Bool {
+        (plannedDistance ?? 0) > 0 || (plannedDuration ?? 0) > 0
+    }
+
+    var hasActualWorkout: Bool {
+        (actualDistance ?? 0) > 0 || (actualDuration ?? 0) > 0
+    }
+
+    var hasWorkoutDetailLink: Bool {
+        UUID(uuidString: id) != nil
+    }
+
     var exportDistanceMeters: Double {
         plannedDistance ?? distance
     }

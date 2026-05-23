@@ -26,8 +26,14 @@ final class UserSessionStore: ObservableObject {
             || (serverURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && LocalConfiguration.useLocalServer)
 
         if shouldUseLocalServer {
-            let host = localIP.trimmingCharacters(in: .whitespacesAndNewlines)
-            let port = localPort.trimmingCharacters(in: .whitespacesAndNewlines)
+            let bundledHost = LocalConfiguration.localServerHost.trimmingCharacters(in: .whitespacesAndNewlines)
+            let bundledPort = LocalConfiguration.localServerPort.trimmingCharacters(in: .whitespacesAndNewlines)
+            let host = LocalConfiguration.useLocalServer && !bundledHost.isEmpty
+                ? bundledHost
+                : localIP.trimmingCharacters(in: .whitespacesAndNewlines)
+            let port = LocalConfiguration.useLocalServer && !bundledPort.isEmpty
+                ? bundledPort
+                : localPort.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !host.isEmpty, !port.isEmpty else { return nil }
             return URL(string: "http://\(host):\(port)")
         }

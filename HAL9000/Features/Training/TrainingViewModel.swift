@@ -133,6 +133,8 @@ final class TrainingViewModel: ObservableObject {
 
     private func parseResponse(_ raw: WeeklyRawResponse) -> (sessions: [TrainingSession], summary: WeeklySummary?, progress: TrainingProgress?) {
         let sessions = (raw.plan ?? []).compactMap { item -> TrainingSession? in
+            let type = item.type ?? "Run"
+            let status = item.status
             let distanceKm = item.actual_distance_km ?? item.planned_distance_km ?? 0
             let durationMinutes = item.actual_dur_min ?? parseDurationMinutes(item.duration)
             let plannedDistance = (item.planned_distance_km ?? 0) * 1000
@@ -141,22 +143,23 @@ final class TrainingViewModel: ObservableObject {
             let actualDuration = item.actual_dur_min.map { $0 * 60 }
             let hasActualWorkout = (actualDistance ?? 0) > 0 || (actualDuration ?? 0) > 0
             let hasPlannedWorkout = plannedDistance > 0 || plannedDuration > 0
+            let isRest = type.lowercased() == "rest" || status?.lowercased().contains("rest") == true
 
-            guard hasActualWorkout || hasPlannedWorkout else {
+            guard hasActualWorkout || hasPlannedWorkout || isRest else {
                 return nil
             }
 
             return TrainingSession(
                 id: item.activity_ids?.first ?? item.iso_date ?? UUID().uuidString,
                 name: sessionName(for: item),
-                type: item.type ?? "Run",
+                type: type,
                 date: item.iso_date ?? item.date ?? "",
                 distance: distanceKm * 1000,
                 duration: durationMinutes * 60,
                 averageHeartrate: item.actual_hr.map(Double.init),
                 averagePace: nil,
                 description: item.detail ?? item.reason,
-                status: item.status,
+                status: status,
                 plannedDistance: plannedDistance > 0 ? plannedDistance : nil,
                 plannedDuration: plannedDuration > 0 ? plannedDuration : nil,
                 actualDistance: actualDistance,
@@ -165,18 +168,19 @@ final class TrainingViewModel: ObservableObject {
                 startedAt: nil
             )
         }
+        let normalizedSessions = normalizeSessions(sessions)
 
         let runTotals = raw.activities?.run
-        let completedDistance = (runTotals?.distance_km ?? raw.plan_summary?.completed_km ?? completedDistanceKm(from: sessions)) * 1000
-        let targetDistance = (raw.plan_summary?.target_km ?? plannedDistanceKm(from: sessions)) * 1000
+        let completedDistance = (runTotals?.distance_km ?? raw.plan_summary?.completed_km ?? completedDistanceKm(from: normalizedSessions)) * 1000
+        let targetDistance = (raw.plan_summary?.target_km ?? plannedDistanceKm(from: normalizedSessions)) * 1000
         let remainingDistance = (raw.plan_summary?.remaining_km.map { $0 * 1000 }) ?? max(targetDistance - completedDistance, 0)
 
-        let visibleSessions = displayableSessions(sessions)
+        let visibleSessions = displayableSessions(normalizedSessions)
 
         let summary = WeeklySummary(
             weekStart: raw.week_range ?? raw.week_label ?? "",
             totalDistance: completedDistance,
-            totalDuration: runTotals?.duration_sec ?? completedDuration(from: sessions),
+            totalDuration: runTotals?.duration_sec ?? completedDuration(from: normalizedSessions),
             totalActivities: runTotals?.count ?? visibleSessions.filter(\.isCompleted).count,
             phase: raw.diagnosis?.phase_name ?? raw.diagnosis?.phase,
             phaseDescription: raw.plan_summary?.target_reason ?? raw.headline?.strippingHTML()
@@ -196,7 +200,7 @@ final class TrainingViewModel: ObservableObject {
             )
         )
 
-        return (sessions, summary, progress)
+        return (normalizedSessions, summary, progress)
     }
 
     private func sessionName(for item: RawPlanItem) -> String {
@@ -282,7 +286,7 @@ final class TrainingViewModel: ObservableObject {
             return false
         }
 
-        sessions = cached.value.sessions
+        sessions = normalizeSessions(cached.value.sessions)
         summary = cached.value.summary
         progress = cached.value.progress
         weekDays = cached.value.weekDays
@@ -301,18 +305,18 @@ final class TrainingViewModel: ObservableObject {
         formatter.locale = Locale(identifier: "zh_CN")
         formatter.dateFormat = "E"
 
-        weekDays = (0..<7).compactMap { offset in
+        let weekSessions = normalizeSessions(sessions)
+
+        weekDays = (0..<7).map { offset in
             let date = calendar.date(byAdding: .day, value: offset, to: interval.start) ?? interval.start
             let dateKey = dateString(from: date)
-            let daySessions = displayableSessions(sessions)
+            let daySessions = weekDisplaySessions(weekSessions)
                 .filter { $0.date == dateKey }
                 .sorted { lhs, rhs in
                     let left = lhs.startedAt ?? self.date(from: lhs.date) ?? .distantPast
                     let right = rhs.startedAt ?? self.date(from: rhs.date) ?? .distantPast
                     return left < right
                 }
-
-            guard !daySessions.isEmpty else { return nil }
 
             return TrainingWeekDay(
                 id: dateKey,
@@ -326,8 +330,18 @@ final class TrainingViewModel: ObservableObject {
     }
 
     private func recoveryAdvice(for date: Date, sessions: [TrainingSession]) -> String {
+        if sessions.isEmpty {
+            return Calendar.current.isDateInToday(date)
+                ? "今天没有安排跑步训练。保持轻量活动，优先恢复。"
+                : "没有安排跑步训练，保持轻量活动。"
+        }
+
+        if sessions.allSatisfy(\.isRestWorkout) {
+            return sessions.first?.description ?? "休息日，保持轻量活动，优先恢复。"
+        }
+
         if let firstSession = sessions.first {
-            if firstSession.isCompleted, let actualDistance = firstSession.actualDistance, actualDistance > 0 {
+            if firstSession.isCompleted, let actualDistance = firstSession.actualDistance, actualDistance > 0, firstSession.hasPlannedWorkout {
                 let planned = firstSession.plannedDistance ?? firstSession.distance
                 let deltaKm = (actualDistance - planned) / 1000
                 if abs(deltaKm) < 0.3 {
@@ -346,11 +360,7 @@ final class TrainingViewModel: ObservableObject {
             return firstSession.description ?? "计划未完成。优先在本周剩余日期安排一次低强度补跑，不建议一次性堆量。"
         }
 
-        if Calendar.current.isDateInToday(date) {
-            return "休息日，散步 20-30 分钟，晚上早点睡。"
-        }
-
-        return "休息日，保持轻量活动，优先恢复。"
+        return "没有安排跑步训练，保持轻量活动。"
     }
 
     private func resetPreparedExport() {
@@ -382,7 +392,7 @@ final class TrainingViewModel: ObservableObject {
               !healthWorkouts.isEmpty
         else { return }
 
-        var mergedSessions = sessions
+        var mergedSessions = normalizeSessions(sessions)
 
         for workout in healthWorkouts {
             if mergedSessions.contains(where: { $0.id == workout.id }) {
@@ -395,6 +405,8 @@ final class TrainingViewModel: ObservableObject {
                 mergedSessions.append(trainingSession(from: workout))
             }
         }
+
+        mergedSessions = normalizeSessions(mergedSessions)
 
         if mergedSessions.map(\.id) != sessions.map(\.id) || mergedSessions.count != sessions.count {
             sessions = mergedSessions.sorted { lhs, rhs in
@@ -512,18 +524,143 @@ final class TrainingViewModel: ObservableObject {
             guard session.date == dateKey, session.isCompleted, session.isRunningWorkout else { return false }
             if let workoutDistance = workout.distanceKm.map({ $0 * 1000 }) {
                 let comparableDistance = session.actualDistance ?? session.distance
-                return abs(comparableDistance - workoutDistance) <= max(500, workoutDistance * 0.15)
+                guard abs(comparableDistance - workoutDistance) <= max(500, workoutDistance * 0.15) else {
+                    return false
+                }
+                return session.hasWorkoutDetailLink
             }
-            return true
+            return session.hasWorkoutDetailLink
         }
     }
 
     private func displayableSessions(_ sessions: [TrainingSession]) -> [TrainingSession] {
         sessions.filter { session in
-            let planned = (session.plannedDistance ?? session.distance) > 0 || (session.plannedDuration ?? session.duration) > 0
-            let actual = (session.actualDistance ?? 0) > 0 || (session.actualDuration ?? 0) > 0
+            let planned = session.hasPlannedWorkout
+            let actual = session.hasActualWorkout
             return planned || actual
         }
+    }
+
+    private func weekDisplaySessions(_ sessions: [TrainingSession]) -> [TrainingSession] {
+        sessions.filter { session in
+            session.isRestWorkout || session.hasPlannedWorkout || session.hasActualWorkout
+        }
+    }
+
+    private func normalizeSessions(_ sessions: [TrainingSession]) -> [TrainingSession] {
+        let grouped = Dictionary(grouping: sessions, by: \.date)
+        return grouped.values.flatMap { normalizeDaySessions($0) }
+            .sorted { lhs, rhs in
+                let leftDate = lhs.startedAt ?? date(from: lhs.date) ?? .distantPast
+                let rightDate = rhs.startedAt ?? date(from: rhs.date) ?? .distantPast
+                return leftDate > rightDate
+            }
+    }
+
+    private func normalizeDaySessions(_ daySessions: [TrainingSession]) -> [TrainingSession] {
+        let restSessions = daySessions.filter(\.isRestWorkout)
+        let workoutSessions = daySessions.filter { !$0.isRestWorkout }
+        guard !workoutSessions.isEmpty else {
+            return Array(restSessions.prefix(1))
+        }
+
+        let actualSessions = workoutSessions.filter { $0.isCompleted && $0.hasActualWorkout && $0.isRunningWorkout }
+        let plannedSessions = workoutSessions.filter { $0.hasPlannedWorkout }
+        let incompletePlans = workoutSessions.filter { !$0.isCompleted && $0.hasPlannedWorkout }
+
+        var usedPlanIDs = Set<String>()
+        var normalized: [TrainingSession] = []
+
+        for cluster in actualClusters(from: actualSessions) {
+            guard let actual = preferredActualSession(from: cluster) else { continue }
+            let plan = matchingPlan(for: actual, from: plannedSessions, excluding: usedPlanIDs)
+                ?? cluster.first(where: \.hasPlannedWorkout)
+            if let plan {
+                usedPlanIDs.insert(plan.id)
+                normalized.append(merge(plan: plan, into: actual))
+            } else {
+                normalized.append(actual)
+            }
+        }
+
+        let normalizedIDs = Set(normalized.map(\.id))
+        for plan in incompletePlans where !usedPlanIDs.contains(plan.id) && !normalizedIDs.contains(plan.id) {
+            normalized.append(plan)
+        }
+
+        if normalized.isEmpty {
+            normalized = workoutSessions
+        }
+
+        return normalized
+    }
+
+    private func actualClusters(from sessions: [TrainingSession]) -> [[TrainingSession]] {
+        var clusters: [[TrainingSession]] = []
+        for session in sessions {
+            if let index = clusters.firstIndex(where: { cluster in
+                guard let representative = cluster.first else { return false }
+                return sameWorkout(session, representative)
+            }) {
+                clusters[index].append(session)
+            } else {
+                clusters.append([session])
+            }
+        }
+        return clusters
+    }
+
+    private func preferredActualSession(from sessions: [TrainingSession]) -> TrainingSession? {
+        sessions.sorted { lhs, rhs in
+            if lhs.hasWorkoutDetailLink != rhs.hasWorkoutDetailLink {
+                return lhs.hasWorkoutDetailLink
+            }
+            let leftDistance = lhs.actualDistance ?? lhs.distance
+            let rightDistance = rhs.actualDistance ?? rhs.distance
+            if leftDistance != rightDistance {
+                return leftDistance > rightDistance
+            }
+            return (lhs.startedAt ?? lhs.exportDate) > (rhs.startedAt ?? rhs.exportDate)
+        }.first
+    }
+
+    private func matchingPlan(for actual: TrainingSession, from plans: [TrainingSession], excluding usedIDs: Set<String>) -> TrainingSession? {
+        plans.first { plan in
+            guard !usedIDs.contains(plan.id), plan.date == actual.date, plan.hasPlannedWorkout else { return false }
+            let plannedDistance = plan.plannedDistance ?? plan.distance
+            let actualDistance = actual.actualDistance ?? actual.distance
+            guard plannedDistance > 0, actualDistance > 0 else { return true }
+            return abs(plannedDistance - actualDistance) <= max(1000, plannedDistance * 0.35)
+        }
+    }
+
+    private func sameWorkout(_ lhs: TrainingSession, _ rhs: TrainingSession) -> Bool {
+        guard lhs.date == rhs.date else { return false }
+        let leftDistance = lhs.actualDistance ?? lhs.distance
+        let rightDistance = rhs.actualDistance ?? rhs.distance
+        guard leftDistance > 0, rightDistance > 0 else { return true }
+        return abs(leftDistance - rightDistance) <= max(500, max(leftDistance, rightDistance) * 0.15)
+    }
+
+    private func merge(plan: TrainingSession, into actual: TrainingSession) -> TrainingSession {
+        TrainingSession(
+            id: actual.id,
+            name: actual.hasWorkoutDetailLink ? actual.name : plan.name,
+            type: actual.type,
+            date: actual.date,
+            distance: actual.actualDistance ?? actual.distance,
+            duration: actual.actualDuration ?? actual.duration,
+            averageHeartrate: actual.averageHeartrate ?? plan.averageHeartrate,
+            averagePace: actual.averagePace ?? plan.averagePace,
+            description: plan.description ?? actual.description,
+            status: actual.status ?? "completed",
+            plannedDistance: plan.plannedDistance ?? plan.distance,
+            plannedDuration: plan.plannedDuration ?? plan.duration,
+            actualDistance: actual.actualDistance ?? actual.distance,
+            actualDuration: actual.actualDuration ?? actual.duration,
+            zone: actual.zone ?? plan.zone,
+            startedAt: actual.startedAt
+        )
     }
 
     private func currentWeekInterval() -> (start: Date, end: Date) {

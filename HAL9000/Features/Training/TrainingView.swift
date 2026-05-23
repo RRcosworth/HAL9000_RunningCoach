@@ -18,8 +18,8 @@ struct TrainingView: View {
                             switch viewModel.state {
                             case .idle, .loading:
                                 skeletonContent
-                            case .loaded:
-                                loadedContent
+            case .loaded:
+                loadedContent
                             case .empty:
                                 emptyContent
                             case .failed(let message):
@@ -292,11 +292,9 @@ struct TrainingView: View {
                             .foregroundStyle(AppColor.textPrimary)
                             .lineLimit(1)
                         Spacer()
-                        if !day.isRestDay {
-                            Text(day.sessions.allSatisfy(\.isCompleted) ? "已完成" : "未完成")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(day.sessions.allSatisfy(\.isCompleted) ? AppColor.success : AppColor.warning)
-                        }
+                        Text(dayStatusText(day))
+                            .font(AppTypography.caption)
+                            .foregroundStyle(dayStatusColor(day))
                     }
 
                     Text(day.recoveryAdvice)
@@ -307,7 +305,7 @@ struct TrainingView: View {
                     if !day.sessions.isEmpty {
                         VStack(spacing: 8) {
                             ForEach(day.sessions) { session in
-                                weekSessionRow(session)
+                                weekSessionBlock(session)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -319,45 +317,55 @@ struct TrainingView: View {
     }
 
     private func dayTitle(_ day: TrainingWeekDay) -> String {
-        if day.sessions.isEmpty {
-            return "休息日"
-        }
-
-        if day.sessions.count == 1 {
-            return day.sessions[0].name
-        }
-
-        return "\(day.sessions.count) 项训练"
+        "\(day.weekday) \(day.title)"
     }
 
-    private func weekSessionRow(_ session: TrainingSession) -> some View {
+    private func weekSessionBlock(_ session: TrainingSession) -> some View {
+        VStack(spacing: 8) {
+            if session.isCompleted, session.hasPlannedWorkout, session.hasActualWorkout {
+                weekSessionRow(title: "训练计划", status: nil, statusColor: AppColor.textSecondary, chips: plannedChips(for: session))
+                weekSessionRow(title: "实际训练", status: nil, statusColor: AppColor.success, chips: actualChips(for: session))
+            } else if session.isCompleted, session.hasActualWorkout {
+                weekSessionRow(title: "实际训练", status: "已完成", statusColor: AppColor.success, chips: actualChips(for: session))
+            } else if session.isRestWorkout {
+                weekSessionRow(title: "休息", status: "休息", statusColor: AppColor.textSecondary, chips: [])
+            } else {
+                weekSessionRow(title: "训练计划", status: "未完成", statusColor: AppColor.warning, chips: plannedChips(for: session))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(AppColor.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func weekSessionRow(title: String, status: String?, statusColor: Color, chips: [(String, String)]) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline) {
-                Text(session.name)
+                Text(title)
                     .font(AppTypography.subheadline)
                     .foregroundStyle(AppColor.textPrimary)
                     .lineLimit(1)
 
                 Spacer(minLength: 8)
 
-                Text(session.isCompleted ? "已完成" : "未完成")
-                    .font(AppTypography.caption)
-                    .foregroundStyle(session.isCompleted ? AppColor.success : AppColor.warning)
-            }
-
-            HStack(spacing: 8) {
-                infoChip(session.planDistanceKm, icon: "ruler")
-                infoChip(session.durationFormatted, icon: "stopwatch")
-                if let zone = session.zone, !zone.isEmpty {
-                    infoChip(zone, icon: "waveform.path.ecg")
+                if let status {
+                    Text(status)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(statusColor)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !chips.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(chips, id: \.0) { chip in
+                        infoChip(chip.0, icon: chip.1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(AppColor.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func historyCard(_ session: TrainingSession, showsChevron: Bool) -> some View {
@@ -541,12 +549,83 @@ struct TrainingView: View {
     }
 
     private var completedSessions: [TrainingSession] {
-        viewModel.sessions
+        uniqueCompletedSessions(viewModel.sessions)
             .filter(\.isCompleted)
+            .filter(\.isRunningWorkout)
             .filter { (($0.actualDistance ?? $0.distance) > 0) || (($0.actualDuration ?? $0.duration) > 0) }
             .sorted {
                 ($0.startedAt ?? $0.exportDate) > ($1.startedAt ?? $1.exportDate)
             }
+    }
+
+    private func dayStatusText(_ day: TrainingWeekDay) -> String {
+        if day.sessions.isEmpty || day.sessions.allSatisfy(\.isRestWorkout) {
+            return "休息"
+        }
+        return day.sessions.allSatisfy(\.isCompleted) ? "已完成" : "未完成"
+    }
+
+    private func dayStatusColor(_ day: TrainingWeekDay) -> Color {
+        if day.sessions.isEmpty || day.sessions.allSatisfy(\.isRestWorkout) {
+            return AppColor.textSecondary
+        }
+        return day.sessions.allSatisfy(\.isCompleted) ? AppColor.success : AppColor.warning
+    }
+
+    private func plannedChips(for session: TrainingSession) -> [(String, String)] {
+        var chips: [(String, String)] = []
+        chips.append((session.planDistanceKm, "ruler"))
+        let duration = session.plannedDuration ?? session.duration
+        if duration > 0 {
+            chips.append((formatDuration(duration), "stopwatch"))
+        }
+        if let zone = session.zone, !zone.isEmpty, zone != "—" {
+            chips.append((zone, "waveform.path.ecg"))
+        }
+        return chips
+    }
+
+    private func actualChips(for session: TrainingSession) -> [(String, String)] {
+        var chips: [(String, String)] = []
+        let distance = session.actualDistance ?? session.distance
+        if distance > 0 {
+            chips.append((String(format: "%.2f km", distance / 1000), "ruler"))
+        }
+        let duration = session.actualDuration ?? session.duration
+        if duration > 0 {
+            chips.append((formatDuration(duration), "stopwatch"))
+        }
+        if let hr = session.heartRateFormatted {
+            chips.append((hr, "heart"))
+        } else if let zone = session.zone, !zone.isEmpty, zone != "—" {
+            chips.append((zone, "waveform.path.ecg"))
+        }
+        return chips
+    }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        let h = seconds / 3600
+        let m = (seconds % 3600) / 60
+        return h > 0 ? "\(h)h\(m)m" : "\(m)min"
+    }
+
+    private func uniqueCompletedSessions(_ sessions: [TrainingSession]) -> [TrainingSession] {
+        var result: [TrainingSession] = []
+        for session in sessions {
+            guard session.isCompleted, session.isRunningWorkout else { continue }
+            let distance = session.actualDistance ?? session.distance
+            if let index = result.firstIndex(where: { existing in
+                existing.date == session.date &&
+                abs((existing.actualDistance ?? existing.distance) - distance) <= max(500, distance * 0.15)
+            }) {
+                if session.hasWorkoutDetailLink && !result[index].hasWorkoutDetailLink {
+                    result[index] = session
+                }
+            } else {
+                result.append(session)
+            }
+        }
+        return result
     }
 
     private var exportMessageColor: Color {
