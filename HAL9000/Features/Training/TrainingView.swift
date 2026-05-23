@@ -265,54 +265,57 @@ struct TrainingView: View {
         trainingCard {
             let primarySession = day.primarySession
 
-            HStack(alignment: .top, spacing: 12) {
-                VStack(spacing: 3) {
-                    Text(day.weekday)
-                        .font(AppTypography.captionBold)
-                    Text(day.title)
-                        .font(AppTypography.caption)
-                }
-                .foregroundStyle(day.isToday ? AppColor.accent : AppColor.textSecondary)
-                .frame(width: 48)
-                .padding(.vertical, 7)
-                .background(day.isToday ? AppColor.accent.opacity(0.12) : AppColor.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                Image(systemName: primarySession?.typeIcon ?? "moon.zzz.fill")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(day.isRestDay ? AppColor.textTertiary : AppColor.accent)
-                    .frame(width: 38, height: 38)
-                    .background((day.isRestDay ? AppColor.textTertiary : AppColor.accent).opacity(0.12))
-                    .clipShape(Circle())
-
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(dayTitle(day))
-                            .font(AppTypography.headline)
-                            .foregroundStyle(AppColor.textPrimary)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(dayStatusText(day))
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(spacing: 3) {
+                        Text(day.weekday)
+                            .font(AppTypography.captionBold)
+                        Text(day.title)
                             .font(AppTypography.caption)
-                            .foregroundStyle(dayStatusColor(day))
                     }
+                    .foregroundStyle(day.isToday ? AppColor.accent : AppColor.textSecondary)
+                    .frame(width: 48)
+                    .padding(.vertical, 7)
+                    .background(day.isToday ? AppColor.accent.opacity(0.12) : AppColor.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                    Text(day.recoveryAdvice)
-                        .font(AppTypography.footnote)
-                        .foregroundStyle(AppColor.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Image(systemName: primarySession?.typeIcon ?? "moon.zzz.fill")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(day.isRestDay ? AppColor.textTertiary : AppColor.accent)
+                        .frame(width: 38, height: 38)
+                        .background((day.isRestDay ? AppColor.textTertiary : AppColor.accent).opacity(0.12))
+                        .clipShape(Circle())
 
-                    if !day.sessions.isEmpty {
-                        VStack(spacing: 8) {
-                            ForEach(day.sessions) { session in
-                                weekSessionBlock(session)
-                            }
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(dayTitle(day))
+                                .font(AppTypography.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(dayStatusText(day))
+                                .font(AppTypography.caption)
+                                .foregroundStyle(dayStatusColor(day))
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text(day.recoveryAdvice)
+                            .font(AppTypography.footnote)
+                            .foregroundStyle(AppColor.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if !day.sessions.isEmpty {
+                    VStack(spacing: 8) {
+                        ForEach(day.sessions) { session in
+                            weekSessionBlock(session)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -360,6 +363,7 @@ struct TrainingView: View {
                 HStack(spacing: 8) {
                     ForEach(chips, id: \.0) { chip in
                         infoChip(chip.0, icon: chip.1)
+                            .frame(maxWidth: .infinity)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
